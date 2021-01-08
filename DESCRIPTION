@@ -1,0 +1,35 @@
+Package: TESAsamSim
+Type: Package
+Title: Closed-loop salmon simulator for 2021 TESA workshop
+Version: 0.0.0.1
+Authors@R: person("Carrie", "Holt", email = "carrie.holt@dfo-mpo.gc.ca", role = c("aut", "cre"))
+Description: TESAsamSim is developed from samSim (C. Freshwater) to evaluate impacts on non-stationarity.
+License: GPL-3
+Depends:
+    R (>= 3.3.0)
+Encoding: UTF-8
+LazyData: true
+ByteCompile: true
+Imports:
+    dplyr,
+    ggplot2,
+    gsl,
+    here,
+    magrittr,
+    mvtnorm,
+    plyr,
+    Rcpp,
+    RcppArmadillo,
+    scales,
+    synchrony,
+    tidyr,
+    zoo
+RoxygenNote: 7.1.1
+Suggests:
+    knitr,
+    rmarkdown,
+    testthat
+VignetteBuilder: knitr
+LinkingTo: 
+    Rcpp,
+    RcppArmadillo

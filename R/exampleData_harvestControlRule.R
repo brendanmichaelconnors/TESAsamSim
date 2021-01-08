@@ -1,0 +1,32 @@
+#' Example data for harvest control rule functions
+#'
+#' A list containing data necessary to run \code{constrain},  \code{calcTAC},
+#' and \code{calcObsCatch} functions' examples. Generated with an example run
+#' of \code{recoverySim} using Fraser River salmon data.
+#'
+#' @format A list with eight elements.
+#' \describe{
+#'   \item{stock}{A character vector of stock names, which are approximately
+#'   equivalent to conservation units.}
+#'   \item{mu}{A character vector of management unit names representing the MU
+#'   that each stock belongs to.}
+#'   \item{recRY}{A numeric vector representing examples of recruit abundance
+#'   (millions of individuals) in a given return year.}
+#'   \item{forecastMU}{A numeric vector representing examples of forecasted
+#'   recruit abundance (millions of individuals). Note that
+#'   although \code{length(forecastMU)} is equal to the number of stocks, the
+#'   number of unique values is equal to the number of MUs because this is the
+#'   scale at which test fisheries occur.}
+#'   \item{adjustment}{A numeric vector representing median adjustments made to
+#'   MU-specific total allowable catches intended to account for en route
+#'   mortality.}
+#'   \item{lowFRP}{A numeric vector representing MU-specific lower fishery
+#'   reference points.}
+#'   \item{highFRP}{A numeric vector representing MU-specific upper fishery
+#'   reference points.}
+#'   \item{mixCatch}{A numeric vector representing CU-specific true catches
+#'   (incorporates outcome uncertainty).}
+#' }
+#' @source recoverySim model run with parameters provided by Pacific Salmon
+#' Commission and Fraser River Sockeye Spawning Initiative (DFO)
+"exampleHCRList"
