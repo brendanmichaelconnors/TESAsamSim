@@ -10,6 +10,6 @@
 #' @import RcppArmadillo
 #' @importFrom Rcpp evalCpp sourceCpp
 #' @exportPattern "^[[:alpha:]]+"
-#' @useDynLib samSim
+#' @useDynLib TESAsamSim
 #' @name TESAsamSim
 NULL

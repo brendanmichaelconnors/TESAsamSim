@@ -2,7 +2,7 @@
 #'
 #' This function uses C++ to quickly fit linear models. Depends on fastLm.cpp.
 #'
-#' @useDynLib samSim
+#' @useDynLib TESAsamSim
 #' @importFrom Rcpp sourceCpp
 #' @import RcppArmadillo
 #'
@@ -29,10 +29,10 @@ quickLm <- function(xVec, yVec){
 
 #______________________________________________________________________________
 
-#' Unload DLL 
+#' Unload DLL
 #'
 #' This function unloads the dynamic library whenever the package is unloaded.
 
 .onUnload <- function (libpath) {
-  library.dynam.unload("samSim", libpath)
+  library.dynam.unload("TESAsamSim", libpath)
 }

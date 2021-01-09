@@ -120,7 +120,6 @@ buildDataCU <- function(dirNames, cuVars, keyVarName, selectedCUs = NULL) {
 #' quantile, and its upper quantile.
 #'
 #' @examples
-#' TO BE COMPLETED
 #'
 #' @export
 

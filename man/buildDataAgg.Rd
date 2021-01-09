@@ -34,6 +34,5 @@ within higher level MP or additional OM (e.g. fixed exploitation or TAM
 rule).
 }
 \examples{
-TO BE COMPLETED
 
 }
