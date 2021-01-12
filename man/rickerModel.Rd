@@ -40,7 +40,7 @@ prevErr and rho are NULL, resulting in a standard Ricker model.
 }
 \examples{
 #Spawner and recruit values represent millions of fish, stock-recruit
-parameters approximate those of Fraser River sockeye salmon Chilko CU.
+#parameters approximate those of Fraser River sockeye salmon Chilko CU.
 
 #without autoregressive error
 rickerModel(S = 1.1, a = 1.8, b = 1.2, error = 0.3)

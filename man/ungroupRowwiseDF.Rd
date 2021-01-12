@@ -7,7 +7,7 @@
 ungroupRowwiseDF(x)
 }
 \arguments{
-\item{data}{Dataframe that is grouped rowwise.}
+\item{x}{Dataframe that is grouped rowwise.}
 }
 \value{
 Returns a dataframe that is no longer grouped rowwise.

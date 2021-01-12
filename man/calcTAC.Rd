@@ -33,6 +33,9 @@ exploitation rate (\code{fixedER}) or the simplified TAM rule (\code{TAM}).}
 sockeye and takes into account the Aboriginal Fishery Exclusion (400k fish).
 Thus their catch/harvest rate is generally below the input parameter.}
 
+\item{ppnMixVec}{A numeric vector representing the proportion of the
+Canadian TAC allocated to mixed stock fisheries.}
+
 \item{manAdjustment}{A numeric  representing MU-specific management
 adjustments. These values are used to adjust forecasted spawner abundance
 to account for en route mortality (i.e. they increase the target escapement
@@ -52,8 +55,8 @@ applied when MU is above its higher FRP.}
 \item{overlapConstraint}{A numeric representing whether a given MU's TAC
 should be constrained or not.}
 
-\item{ppnMix}{A numeric representing the proportion of the Canadian TAC
-allocated to mixed stock fisheries.}
+\item{constrainMix}{A logical representing whether mix-stock fishery TAC
+should be constrained or not.}
 }
 \value{
 Returns a six element list of numeric vectors with length equal to
@@ -88,7 +91,7 @@ the two it increases linearly, and above it is max (typically Umsy).
 \examples{
 #Note that the function is intended to receive vectors rather than the DF
 #used in this example to increase efficiency within the full closed-loop
-simulation.
+#simulation.
 head(exampleHCRList)
 names(exampleHCRList)[4] <- "recRYMU"
 

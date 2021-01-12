@@ -8,6 +8,8 @@ mutate_when(data, ...)
 }
 \arguments{
 \item{data}{Dataframe that meets standard dplyr requirements.}
+
+\item{...}{Additional arguments.}
 }
 \value{
 Returns a dataframe subsetted as requested.

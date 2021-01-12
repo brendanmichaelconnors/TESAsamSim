@@ -55,6 +55,17 @@ symbols should be filled with \code{viridis} palette or grey scale.}
 
 \item{main}{A logical specifying whether a plot title should be added.}
 
+\item{axisSize}{A number representing the font size for the axes.}
+
+\item{dotSize}{A number representing the dot size.}
+
+\item{lineSize}{A number representing the line width.}
+
+\item{legendSize}{A number representing the size of the legend text.}
+
+\item{freeY}{A logical specifying if the yaxis has variable axis dimentions
+across facets.}
+
 \item{scaleAxis}{A character vector that can take values `c("fixed", "free",
 "free_x", "free_y")` that determines which axes, if any, have variable axes
 dimensions across facets.}
@@ -67,9 +78,9 @@ This function generates Kobe style plots for a series of conservation- and
 catch-based performance metrics.
 }
 \examples{
-plotCUTradeoff(cuPlottingDF, consVar = "medSpawners", catchVar = "medCatch",
-facet = "cu", panel = "om", showUncertainty = FALSE,
-legendLab = "Prop. TAC in mixed stock fishery", xLab = "Median Catch",
-yLab = "Median Spawners", main = FALSE)
+#plotCUTradeoff(cuPlottingDF, consVar = "medSpawners", catchVar = "medCatch",
+#facet = "cu", panel = "om", showUncertainty = FALSE,
+#legendLab = "Prop. TAC in mixed stock fishery", xLab = "Median Catch",
+#yLab = "Median Spawners", main = FALSE)
 
 }

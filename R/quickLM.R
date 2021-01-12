@@ -32,6 +32,7 @@ quickLm <- function(xVec, yVec){
 #' Unload DLL
 #'
 #' This function unloads the dynamic library whenever the package is unloaded.
+#' @param libpath The path of the library.
 
 .onUnload <- function (libpath) {
   library.dynam.unload("TESAsamSim", libpath)

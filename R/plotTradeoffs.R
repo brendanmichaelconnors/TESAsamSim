@@ -28,16 +28,22 @@
 #' @param xLab A character representing the x axis label.
 #' @param yLab A character representing the y axis label.
 #' @param main A logical specifying whether a plot title should be added.
+#' @param axisSize A number representing the font size for the axes.
+#' @param dotSize A number representing the dot size.
+#' @param lineSize A number representing the line width.
+#' @param legendSize A number representing the size of the legend text.
+#' @param freeY A logical specifying if the yaxis has variable axis dimentions
+#' across facets.
 #' @param scaleAxis A character vector that can take values `c("fixed", "free",
 #' "free_x", "free_y")` that determines which axes, if any, have variable axes
 #' dimensions across facets.
 #' @return Returns a ggplot object.
 #'
 #' @examples
-#' plotCUTradeoff(cuPlottingDF, consVar = "medSpawners", catchVar = "medCatch",
-#' facet = "cu", panel = "om", showUncertainty = FALSE,
-#' legendLab = "Prop. TAC in mixed stock fishery", xLab = "Median Catch",
-#' yLab = "Median Spawners", main = FALSE)
+#' #plotCUTradeoff(cuPlottingDF, consVar = "medSpawners", catchVar = "medCatch",
+#' #facet = "cu", panel = "om", showUncertainty = FALSE,
+#' #legendLab = "Prop. TAC in mixed stock fishery", xLab = "Median Catch",
+#' #yLab = "Median Spawners", main = FALSE)
 #'
 #' @export
 plotCUTradeoff <- function(cuDat, consVar = "medSpawners", catchVar = "medCatch",
@@ -182,6 +188,10 @@ plotCUTradeoff <- function(cuDat, consVar = "medSpawners", catchVar = "medCatch"
 #' @param xLab A character representing the x axis label.
 #' @param yLab A character representing the y axis label.
 #' @param mainLab A character specifying a plot title (defaults to NULL).
+#' @param axisSize A number representing the font size for the axes.
+#' @param dotSize A number representing the dot size.
+#' @param lineSize A number representing the line width.
+#' @param legendSize A number representing the size of the legend text.
 #' @param scaleAxis A character vector that can take values `c("fixed", "free",
 #' "free_x", "free_y")` that determines which axes, if any, have variable axes dimensions
 #' across facets.
@@ -190,10 +200,10 @@ plotCUTradeoff <- function(cuDat, consVar = "medSpawners", catchVar = "medCatch"
 #' @return Returns a ggplot object.
 #'
 #' @examples
-#' plotAgTradeoff(agPlottingDF, consVar = "medSpawners", catchVar = "medCatch",
-#' facet = "om", showUncertainty = TRUE,
-#' legendLab = "Prop. TAC in mixed stock fishery", xLab = "Median Catch",
-#' yLab = "Median Spawners")
+#' #plotAgTradeoff(agPlottingDF, consVar = "medSpawners", catchVar = "medCatch",
+#' #facet = "om", showUncertainty = TRUE,
+#' #legendLab = "Prop. TAC in mixed stock fishery", xLab = "Median Catch",
+#' #yLab = "Median Spawners")
 #'
 #' @export
 plotAgTradeoff <- function(agDat, consVar = "medSpawners",

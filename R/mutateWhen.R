@@ -3,6 +3,7 @@
 #' Simple helper function to allow conditional application of mutate.
 #'
 #' @param data Dataframe that meets standard dplyr requirements.
+#' @param ... Additional arguments.
 #' @return Returns a dataframe subsetted as requested.
 #'
 #' @examples

@@ -31,8 +31,8 @@
 #' **Note** that American catch is a function of TAC not escapement for Fraser
 #' sockeye and takes into account the Aboriginal Fishery Exclusion (400k fish).
 #' Thus their catch/harvest rate is generally below the input parameter.
-#' @param ppnMix A numeric representing the proportion of the Canadian TAC
-#' allocated to mixed stock fisheries.
+#' @param ppnMixVec A numeric vector representing the proportion of the
+#' Canadian TAC allocated to mixed stock fisheries.
 #' @param manAdjustment A numeric  representing MU-specific management
 #' adjustments. These values are used to adjust forecasted spawner abundance
 #' to account for en route mortality (i.e. they increase the target escapement
@@ -46,6 +46,8 @@
 #' applied when MU is above its higher FRP.
 #' @param overlapConstraint A numeric representing whether a given MU's TAC
 #' should be constrained or not.
+#' @param constrainMix A logical representing whether mix-stock fishery TAC
+#' should be constrained or not.
 #' @return Returns a six element list of numeric vectors with length equal to
 #' forecast: American TAC, single fishery TAC, mixed fishery TAC, total TAC,
 #' unconstrained American TAC, and unconstrained Canadian TAC (latter two for
@@ -54,7 +56,7 @@
 #' @examples
 #' #Note that the function is intended to receive vectors rather than the DF
 #' #used in this example to increase efficiency within the full closed-loop
-#' simulation.
+#' #simulation.
 #' head(exampleHCRList)
 #' names(exampleHCRList)[4] <- "recRYMU"
 #'

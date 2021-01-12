@@ -23,7 +23,36 @@ genericRecoverySim(
 )
 }
 \arguments{
-\item{y}{TO BE DEFINED}
+\item{simPar}{Simulation parameters.}
+
+\item{cuPar}{CU (Conservation Unit) parameters.}
+
+\item{catchDat}{Historical catch data.}
+
+\item{srDat}{Historical stock-recruitment data.}
+
+\item{variableCU}{A logical to determine if CU name should be included in
+output labels.}
+
+\item{makeSubDirs}{Should sub-directories by made for outputs?}
+
+\item{ricPars}{Ricker stock-recruitment parameters.}
+
+\item{larkPars}{Larkin stock-recruitment parameters.}
+
+\item{cuCustomCorrMat}{Custom correlation matrix for recruitment residuals.}
+
+\item{erCorrMat}{Correlation matrix for exploitaion rates.}
+
+\item{dirName}{Name of directory for outputs.}
+
+\item{nTrials}{Number of Monte Carlo trials.}
+
+\item{uniqueProd}{Should all CUs have unique productivities?}
+
+\item{uniqueSurv}{Should all CUs have unique correlations?}
+
+\item{random}{Should all trials start with a random seed?}
 }
 \value{
 TO BE DEFINED

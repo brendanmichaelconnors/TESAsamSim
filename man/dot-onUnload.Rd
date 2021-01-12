@@ -6,6 +6,9 @@
 \usage{
 .onUnload(libpath)
 }
+\arguments{
+\item{libpath}{The path of the library.}
+}
 \description{
 This function unloads the dynamic library whenever the package is unloaded.
 }

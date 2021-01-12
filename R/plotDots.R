@@ -17,6 +17,11 @@
 #' @param xLab A character representing the x axis label.
 #' @param yLab A character representing the y axis label.
 #' @param plotTitle A character representing the main plot title.
+#' @param plotTitle A character representing the main plot title.
+#' @param axisSize A number representing the font size for the axis.
+#' @param dotSize A number representing the dot size.
+#' @param lineSize A number representing the line size.
+#' @param legendSize A number representing the font size for the legend.
 #' @return Returns a ggplot object.
 #'
 #' @examples
@@ -100,6 +105,11 @@ plotCUDot <- function(cuDat, plotVar, group = "om", legendLab = NULL,
 #' @param xLab A character representing the x axis label.
 #' @param yLab A character representing the y axis label.
 #' @param plotTitle A character representing the main plot title.
+#' @param axisSize A number representing the font size for the axis.
+#' @param dotSize A number representing the dot size.
+#' @param lineSize A number representing the line size.
+#' @param legendSize A number representing the font size for the legend.
+#'
 #' @return Returns a ggplot object.
 #'
 #' @examples

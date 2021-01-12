@@ -54,6 +54,14 @@ variables credible interval should be plotted.}
 
 \item{mainLab}{A character specifying a plot title (defaults to NULL).}
 
+\item{axisSize}{A number representing the font size for the axes.}
+
+\item{dotSize}{A number representing the dot size.}
+
+\item{lineSize}{A number representing the line width.}
+
+\item{legendSize}{A number representing the size of the legend text.}
+
 \item{scaleAxis}{A character vector that can take values `c("fixed", "free",
 "free_x", "free_y")` that determines which axes, if any, have variable axes dimensions
 across facets.}
@@ -69,9 +77,9 @@ This function generates Kobe style plots for a series of conservation- and
 catch-based performance metrics.
 }
 \examples{
-plotAgTradeoff(agPlottingDF, consVar = "medSpawners", catchVar = "medCatch",
-facet = "om", showUncertainty = TRUE,
-legendLab = "Prop. TAC in mixed stock fishery", xLab = "Median Catch",
-yLab = "Median Spawners")
+#plotAgTradeoff(agPlottingDF, consVar = "medSpawners", catchVar = "medCatch",
+#facet = "om", showUncertainty = TRUE,
+#legendLab = "Prop. TAC in mixed stock fishery", xLab = "Median Catch",
+#yLab = "Median Spawners")
 
 }

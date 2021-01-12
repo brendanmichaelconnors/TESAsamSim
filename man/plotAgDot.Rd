@@ -30,6 +30,14 @@ and specifies along which categorical variable dot plots should be grouped.}
 \item{yLab}{A character representing the y axis label.}
 
 \item{plotTitle}{A character representing the main plot title.}
+
+\item{axisSize}{A number representing the font size for the axis.}
+
+\item{dotSize}{A number representing the dot size.}
+
+\item{lineSize}{A number representing the line size.}
+
+\item{legendSize}{A number representing the font size for the legend.}
 }
 \value{
 Returns a ggplot object.

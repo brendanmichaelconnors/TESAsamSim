@@ -6,6 +6,13 @@
 \usage{
 coordRadar(theta = "x", start = 0, direction = 1)
 }
+\arguments{
+\item{theta}{x variable}
+
+\item{start}{location of start on radar plot}
+
+\item{direction}{direction of variables in radar}
+}
 \description{
 Helper function to transform input data into coordinates that can be
 passed to \code{plotRadar}.

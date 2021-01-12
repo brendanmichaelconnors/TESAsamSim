@@ -23,10 +23,37 @@ recoverySim(
 )
 }
 \arguments{
-\item{y}{TO BE DEFINED}
-}
-\value{
-TO BE DEFINED.
+\item{simPar}{Simulation parameters.}
+
+\item{cuPar}{CU (Conservation Unit) parameters.}
+
+\item{catchDat}{Historical catch data.}
+
+\item{srDat}{Historical stock-recruitment data.}
+
+\item{variableCU}{A logical to determine if CU name should be included in
+output labels.}
+
+\item{makeSubDirs}{Should sub-directories by made for outputs?}
+
+\item{ricPars}{Ricker stock-recruitment parameters.}
+
+\item{larkPars}{Larkin stock-recruitment parameters.}
+
+\item{tamFRP}{Fisheries Reference Points for the Total Allowable Mortality
+rule used for Fraser River Sockeye Salmon.}
+
+\item{cuCustomCorrMat}{Custom correlation matrix for recruitment residuals.}
+
+\item{erCorrMat}{Correlation matrix for exploitaion rates.}
+
+\item{dirName}{Name of directory for outputs.}
+
+\item{nTrials}{Number of Monte Carlo trials.}
+
+\item{uniqueProd}{Should all CUs have unique productivities?}
+
+\item{random}{Should all trials start with a random seed?}
 }
 \description{
 Closed-loop simulation tool to assess management procedures and inform

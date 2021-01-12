@@ -2,7 +2,7 @@
 #'
 #' Simple helper function to undo rowwise grouping.
 #'
-#' @param data Dataframe that is grouped rowwise.
+#' @param x Dataframe that is grouped rowwise.
 #' @return Returns a dataframe that is no longer grouped rowwise.
 #'
 #' @export

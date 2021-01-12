@@ -18,7 +18,23 @@
 #' structure, survey design, and variable exploitation rules.
 #' @importFrom here here
 #' @importFrom dplyr group_by summarise
-#' @param y TO BE DEFINED
+#' @importFrom sn rmst
+#' @param simPar Simulation parameters.
+#' @param cuPar CU (Conservation Unit) parameters.
+#' @param catchDat Historical catch data.
+#' @param srDat Historical stock-recruitment data.
+#' @param variableCU A logical to determine if CU name should be included in
+#' output labels.
+#' @param makeSubDirs Should sub-directories by made for outputs?
+#' @param ricPars Ricker stock-recruitment parameters.
+#' @param larkPars Larkin stock-recruitment parameters.
+#' @param cuCustomCorrMat Custom correlation matrix for recruitment residuals.
+#' @param erCorrMat Correlation matrix for exploitaion rates.
+#' @param dirName Name of directory for outputs.
+#' @param nTrials Number of Monte Carlo trials.
+#' @param uniqueProd Should all CUs have unique productivities?
+#' @param uniqueSurv Should all CUs have unique correlations?
+#' @param random Should all trials start with a random seed?
 #' @return TO BE DEFINED
 #' @export
 #'
@@ -1536,21 +1552,21 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
       }
       if (prod == "skew") {
         #draw process variance from skewed normal distribution
-        errorCU[y, ] <- sn::rmst(n = 1, xi = rep(0, nCU),
+        errorCU[y, ] <- rmst(n = 1, xi = rep(0, nCU),
                                  alpha = rep(log(0.65), nCU), nu = 1000,
                                  Omega = covMat)
       } else if (prod == "skewT") {
         #draw process variance from skewed T distribution
-        errorCU[y, ] <- sn::rmst(n = 1, xi = rep(0, nCU),
+        errorCU[y, ] <- rmst(n = 1, xi = rep(0, nCU),
                                  alpha = rep(log(0.65), nCU), nu = 2,
                                  Omega = covMat)
       } else if (prod == "studT" | prod == "lowStudT") {
         #draw process variance from student T distribution
-        errorCU[y, ] <- sn::rmst(n = 1, xi = rep(0, nCU),
+        errorCU[y, ] <- rmst(n = 1, xi = rep(0, nCU),
                                  alpha = rep(0, nCU), nu = 2,
                                  Omega = covMat)
       } else { #otherwise draw from normal
-        errorCU[y, ] <- sn::rmst(n = 1, xi = rep(0, nCU),
+        errorCU[y, ] <- rmst(n = 1, xi = rep(0, nCU),
                                  alpha = rep(0, nCU), nu = 10000,
                                  Omega = covMat)
       }
