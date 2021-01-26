@@ -1,0 +1,97 @@
+---
+title: "Example TESAsamSim Run"
+author: "Carrie Holt"
+date: "January 25, 2021"
+output: html_document
+---
+
+This document demonstrates an example simulation run with Interior Fraser River coho salmon data. This has been adapted from similar documentation for samSim by C. Freshwater.
+
+
+First install necessary packages and load data. `TESAsamSim` should be installed following instructions in the `README.md`. Note that `TESAsamSim` depends on a large number of other packages, but that the relevant functions are installed automatically with when it is built. The other packages are largely for data processing or to run the simulations in parallel (additional details below).
+
+```{r importData, echo=TRUE, warning=FALSE}
+## Check if necessary packages are available and install if necessary
+listOfPackages <- c("here", "parallel", "doParallel", "foreach", 
+                    "tidyverse", "tictoc", "TESAsamSim")
+newPackages <- listOfPackages[!(listOfPackages %in% 
+                                  installed.packages()[ , "Package"])]
+if (length(newPackages)) {
+  install.packages(newPackages)
+}
+lapply(listOfPackages, require, character.only = TRUE)
+
+
+## Load relevant input data
+# Simulation run parameters describing different scenarios
+simPar <- read.csv(here("data", "IFCohoPars",
+                         "cohoSimPar.csv"),
+                       stringsAsFactors = F)
+# CU-specific parameters
+cuPar <- read.csv(here("data", "IFCohoPars", "cohoCUpars.csv"),
+                  stringsAsFactors=F)
+# Stock-recruit and catch data that are used to populate the simulation priming
+# period
+srDat <- read.csv(here("data", "IFCohoPars", "cohoRecDatTrim.csv"),
+                  stringsAsFactors=F)
+# Posterior values of  CU-specific stock recruitment parameters for Ricker 
+# passed and used to calculate alpha, beta and sigma parameters rather than 
+# passing point values 
+# ricPars <- read.csv(here("data", "IFCohoPars", "cohoRicker_mcmc.csv"),
+#                       stringsAsFactors=F)
+# remove(ricPars)
+# cuCustomCorrMat <- read.csv(here("data", "IFCohoPars", "cohoCorrMat.csv"),
+#                       stringsAsFactors=F, header=F)
+# remove(cuCustomCorrMat)
+## Store relevant object names to help run simulation 
+scenNames <- unique(simPar$scenario)
+dirNames <- sapply(scenNames, function(x) paste(x, unique(simPar$species),
+                                                sep = "_"))
+```
+
+One argument in `genericRecoverySim()` worth focusing on is `makeSubDirs`, which controls how model output is saved. `genericRecoverySim()` automatically creates a directory based on the `dirName` argument. When `makeSubDirs = TRUE` (the default), the function also creates a subdirectory for each unique value of `simPar$nameOM`. This allows users to cluster similar OM/MPs together. Note that individual filenames are a combination of `nameOM` and `nameMP`.  For convenience's sake `dirName` is often set to either `simPar$scenario` or `simPar$nameMP`, but not `simPar$nameOM` for obvious reasons. Thus scenarios must be saved in a unique directory OR have unique combinations of `nameOM` and `nameMP` to avoid being overwritten. Here we set `makeSubDirs = FALSE` because each scenario contains only one OM or MP. 
+
+```{r checkScenarios, echo = TRUE}
+length(unique(simPar$scenario)) == nrow(simPar)
+
+simPar %>% 
+  select(scenario, nameOM, nameMP)
+```
+
+
+By default `genericrecoverySim()` calculates and stores a large number of CU-specific performance metrics each simulation year. Stable performance metric outputs also typically require several hundred to several thousand trials per scenario (i.e. unique combination of operating model and management procedure). As a result, while it is possible to run the simulations on a single core, it is not advisable except as an initial check to make sure that the provided inputs do not cause the model to crash.
+
+Here, the `parallel`, `doParallel`, and `foreach` packages are used to run multiple scenarios simultaneously.
+
+
+```{r runSim, echo=TRUE, warning=FALSE}
+## First check to ensure that a single scenario can be run (only a small number
+# of trials necessary)
+genericRecoverySim(simPar=simPar[3,], cuPar=cuPar,  srDat=srDat,
+            variableCU=FALSE, ricPars=NULL, #ricPars,  #cuCustomCorrMat = cuCustomCorrMat,
+            dirName="test", nTrials=3, makeSubDirs=FALSE, random=FALSE)
+
+
+## Define a larger number of simulations to be run (note still well below 
+## suggested number for stability)
+nTrials <- 50#150
+
+## Divide each scenario into a list element to pass to parLapply()
+simsToRun <- split(simPar, seq(nrow(simPar)))
+dirName <- "example"
+Ncores <- detectCores()
+cl <- makeCluster(Ncores - 1) #save one core
+registerDoParallel(cl)
+clusterEvalQ(cl, c(library(TESAsamSim)))
+clusterExport(cl, c("simsToRun", "cuPar", "nTrials", "dirName",
+                     "srDat"), envir=environment())
+tic("run in parallel")
+parLapply(cl, simsToRun, function(x) {
+  genericRecoverySim(x, cuPar=cuPar, srDat=srDat, catchDat=NULL,  variableCU=FALSE,
+              ricPars=NULL, larkPars=NULL, cuCustomCorrMat = NULL, 
+              uniqueSurv=FALSE, dirName=dirName, 
+              nTrials=nTrials, makeSubDirs=FALSE, random=FALSE)
+  })
+stopCluster(cl) #end cluster
+toc()
+```

@@ -25,7 +25,8 @@ Imports:
     synchrony,
     tidyr,
     viridis,
-    zoo
+    zoo,
+    tibble
 RoxygenNote: 7.1.1
 Suggests:
     knitr,

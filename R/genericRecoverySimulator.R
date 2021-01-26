@@ -17,7 +17,7 @@
 #' (recDat input). The model includes data generation, variation in age
 #' structure, survey design, and variable exploitation rules.
 #' @importFrom here here
-#' @importFrom dplyr group_by summarise
+#' @importFrom dplyr group_by summarise select left_join
 #' @importFrom sn rmst
 #' @param simPar Simulation parameters.
 #' @param cuPar CU (Conservation Unit) parameters.
@@ -179,7 +179,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
 
   # Coerce all stocks to have the same alpha parameter (regardless of model
   # structure), others will vary
-  if (is.na(mu_logCoVar[1]) == FALSE & uniqueSurv == FALSE) {
+  if (is.null(mu_logCoVar[1]) == FALSE & uniqueSurv == FALSE) {
     mu_logCoVar<-mean(mu_logCoVar)
     sig_logCoVar<-mean(sig_logCoVar)
     min_logCoVar<-mean(min_logCoVar)
@@ -200,7 +200,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
     ricA <- dum$pMed[["alpha"]]
     ricB <- dum$pMed[["beta"]]
     ricSig <- dum$pMed[["sigma"]]
-    ricGamma <- dum$pMed[["gamma"]]
+    ricGamma <- ifelse(model == "rickerSurv", dum$pMed[["gamma"]], NA)
     if (is.null(larkPars) == FALSE) {
       #getSRPars provides quantiles as well which can be used for high/low prod
       #treatments but this is currently replaced by applying a simple scalar
@@ -1541,10 +1541,13 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
 
       # Get marine rvival covariate (only used for rickerSurv SR model)
       ## - all CUs have the same marine survival (only option available at present)
-      if (y == nPrime+1) mSurvAge4[1:nPrime, n] <- rep(exp(mu_logCoVar),nPrime)
-      mSurvAge4[y, n]<-rnorm(1,mu_logCoVar,sig_logCoVar)
-      if (mSurvAge4[y, n] > max_logCoVar) mSurvAge4[y, n] <- max_logCoVar
-      if (mSurvAge4[y, n] < min_logCoVar) mSurvAge4[y, n] <- min_logCoVar
+      if(model== "rickerSurv"){
+        if (y == nPrime+1) mSurvAge4[1:nPrime, n] <- rep(exp(mu_logCoVar),nPrime)
+        mSurvAge4[y, n]<-rnorm(1,mu_logCoVar,sig_logCoVar)
+        if (mSurvAge4[y, n] > max_logCoVar) mSurvAge4[y, n] <- max_logCoVar
+        if (mSurvAge4[y, n] < min_logCoVar) mSurvAge4[y, n] <- min_logCoVar
+
+      }
 
       for (k in 1:nrow(ageStruc)) {
         ppnAges[y, k, ] <- ppnAgeErr(ageStruc[k, ], tauAge[k],
@@ -2011,27 +2014,27 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   )
   fileName <- ifelse(variableCU == "TRUE", paste(cuNameOM, cuNameMP, "aggDat.csv", sep = "_"),
                      paste(nameOM, nameMP, "aggDat.csv", sep = "_"))
-  write.csv(aggDat, file = paste(here("outputs/simData"), dirPath, fileName, sep = "/"), row.names = FALSE)
+  # write.csv(aggDat, file = paste(here("outputs/simData"), dirPath, fileName, sep = "/"), row.names = FALSE)
 
 
   # Create LRP data for output
   colnames(sAg)<-as.character(1:nTrials)
-  sAg.dat<-as_tibble(sAg)
-  sAg.dat<-sAg.dat %>% add_column(year=1:nYears)
-  sAg.dat<-sAg.dat %>% pivot_longer(as.character(1:nTrials), names_to="iteration", values_to="sAg")
+  sAg.dat<-as.data.frame(sAg)
+  sAg.dat<-sAg.dat %>% tibble::add_column(year=1:nYears)
+  sAg.dat<-sAg.dat %>% tidyr::pivot_longer(as.character(1:nTrials), names_to="iteration", values_to="sAg")
 
   colnames(ppnCUsLowerBM)<-as.character(1:nTrials)
-  ppnCUs.dat<-as_tibble(ppnCUsLowerBM)
-  ppnCUs.dat<-ppnCUs.dat %>% add_column(year=1:nYears)
-  ppnCUs.dat<-ppnCUs.dat %>% pivot_longer(as.character(1:nTrials), names_to="iteration", values_to="ppnCUsLowerBM")
+  ppnCUs.dat<-as.data.frame(ppnCUsLowerBM)
+  ppnCUs.dat<-ppnCUs.dat %>% tibble::add_column(year=1:nYears)
+  ppnCUs.dat<-ppnCUs.dat %>% tidyr::pivot_longer(as.character(1:nTrials), names_to="iteration", values_to="ppnCUsLowerBM")
 
-  LRP.dat <- sAg.dat %>% left_join(ppnCUs.dat)
+  LRP.dat <- sAg.dat %>% dplyr::left_join(ppnCUs.dat)
 
   fileName <- ifelse(variableCU == "TRUE", paste(cuNameOM, cuNameMP, "lrpDat.csv", sep = "_"),
                      paste(nameOM, nameMP, "lrpDat.csv", sep = "_"))
 
-  write.csv(LRP.dat, file = paste(here("outputs/simData"), dirPath, fileName, sep = "/"),
-            row.names = FALSE)
+  # write.csv(LRP.dat, file = paste(here("outputs/simData"), dirPath, fileName, sep = "/"),
+  #           row.names = FALSE)
 
 
 
@@ -2039,17 +2042,17 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
 
   for(i in 1:nTrials) {
 
-    spnDat.i<-as_tibble(spwnrArray[,,i])
+    spnDat.i<-as.data.frame(spwnrArray[,,i])
 
-    spnDat.i<-spnDat.i %>% add_column(year=1:nrow(spwnrArray)) %>% add_column(iteration=rep(i,nrow(spwnrArray)))
+    spnDat.i<-spnDat.i %>% tibble::add_column(year=1:nrow(spwnrArray)) %>% tibble::add_column(iteration=rep(i,nrow(spwnrArray)))
 
 
-    spnDat_long.i <- spnDat.i %>% select(starts_with("V"),iteration, year) %>% pivot_longer(starts_with("V"),names_to="CU", values_to="spawners")
+    spnDat_long.i <- spnDat.i %>% dplyr::select(tidyr::starts_with("V"),iteration, year) %>% tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="spawners")
     spnDat_long.i$CU<-rep(1:nCU,length=nrow(spnDat_long.i))
 
     if (i == 1) spnDat<-spnDat_long.i
     if (i > 1) {
-      spnDat<-bind_rows(spnDat,spnDat_long.i)
+      spnDat <- dplyr::bind_rows(spnDat,spnDat_long.i)
     }
 
   }

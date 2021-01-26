@@ -48,6 +48,9 @@ genericRecoverySim(simPar[1, ], cuPar=cuPar, srDat=srDat,
                  variableCU=FALSE, ricPars=ricPars, cuCustomCorrMat = corMatrix,
                  dirName="test.co", nTrials=100, makeSubDirs=FALSE, random=FALSE)
 
+genericRecoverySim(simPar[1, ], cuPar=cuPar, srDat=srDat,
+                   variableCU=FALSE, ricPars=ricPars, cuCustomCorrMat = corMatrix,
+                   dirName="test", nTrials=3, makeSubDirs=FALSE, random=FALSE)
 
 
 genericRecoverySim(simPar[2, ], cuPar=cuPar, srDat=srDat,

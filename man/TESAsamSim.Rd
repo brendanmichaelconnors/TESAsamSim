@@ -7,7 +7,8 @@
 \description{
 TESAsamSim is developed from samSim and is intended
 to evaluate impacts of non-stationarity
-for Pacific salmon
+for Pacific salmon. Adapted from samSim (by Cameron
+Freshwater)
 }
 \author{
 Carrie Holt <carrie.holt@dfo-mpo.gc.ca>
