@@ -1,4 +1,4 @@
-#' Recovery simulator
+#' Recovery simulator- OBSOLETE in TESAsamSIM. Use generic Recovery Simulator
 #'
 #' Closed-loop simulation tool to assess management procedures and inform
 #' Pacific salmon rebuilding strategies. Originally based on C. Holt's south
