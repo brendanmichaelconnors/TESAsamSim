@@ -11,21 +11,12 @@
 
 
 ### Summary
-This repository contains the necessary files to run stochastic closed-loop simulations parameterized with Pacific salmon stock-recruitment data. The principal function, `genericRecoverySimulator()`, is intended to simulate the population dynamics for Pacific salmon and then evaluate the performance of different management procedures (broadly a mix of harvest control rules and assessment methods) across operating models representing distinct ecological hypotheses. A suite of performance metrics are generated that allow analysts to evaluate different management procedures ability to achieve multiple, interacting conservation- and catch-based objectives. In short, the model is intended to provide a framework for the quantitative component of a management strategy evaluation. This simulation model is a more generic, simplifed version of 'samSim' initially developed to evaluate recovery strategies applied to Fraser River sockeye and Nass chum salmon.
+This repository contains the necessary files to run stochastic closed-loop simulations parameterized with Pacific salmon stock-recruitment data. The principal function, `genericRecoverySimulator()`, is intended to simulate the population dynamics for multiple populations of Pacific salmon and then evaluate the performance of different management procedures (broadly a mix of harvest control rules and assessment methods) across operating models representing distinct ecological hypotheses. A suite of performance metrics are generated that allow analysts to evaluate different management procedures ability to achieve multiple, interacting conservation- and catch-based objectives. In short, the model is intended to provide a framework for the quantitative component of a management strategy evaluation. This simulation model is a more generic, simplifed version of 'samSim' initially developed to evaluate recovery strategies applied to Fraser River sockeye and Nass chum salmon.
 
 The focal unit of the simulated dynamics are conservation units (CUs) - genetically distinct aggregates of one or more spawning populations that are unlikely to recolonize in the event of extirpation. Under Canada's Wild Salmon Policy these will be the target of future rebuilding strategies. Thus the `TESAsamSim` package (and the original `samSim` package) are well suited for evaluating management procedures for CUs in a mixed-stock context, but should not be used to evaluate the dynamics of subpopulations within CUs and should only be used to evaluate multiple management units (distinct aggregates of CUs managed quasi-independently) with care.
 
-A summary of relevant files and how to run a simulation are provided below. Most functions contain relatively detailed documentation (and sometimes functioning examples). Details on the operating model (biological dynamics and fishery interactions) and the management procedures (harvest control rule and assessment process) will be provided in a vignette to come.
+A summary of relevant files and how to run a simulation are provided below. Most functions contain relatively detailed documentation (and sometimes functioning examples). Details on the operating model (biological dynamics and fishery interactions) and the management procedures (harvest control rule and assessment process) will be provided in a vignette to come. The following documentation is adapted from that for the `samSim` package.
 
-
-### Changes from samSim package 
-
-1) Removing species-specific code references. Life history types will be specified through new fields in the CUPars.csv input file (e.g., firstAgeRec, maxAgeRec, obsBYlag)
-2) Removing performance measures specific to the TAM harvest control rule option used for Fraser sockeye
-3) Adding a new SR model option that includes a marine survival co-variate (needed in the short-term for Interior Fraser Coho)
-4) Adding performance measures needed to calculate LRPs
-
-* Note that the following documentation is from the original samSim package. It has not yet been updated for this LRP branch. Examples will not work at present.
 
 [After installing the package development prerequisites](https://support.rstudio.com/hc/en-us/articles/200486498) install `samSim` with:
 
@@ -40,7 +31,8 @@ All files are stored in the following directories:
 
 #### data
 
-  
+Includes data input files. For the 2021 TESA workshop, we will be using example data from Interior Fraser River coho salmon in the directory, *IFCohoPars*. See Input Files section below.
+
 #### man
 Includes the .rd files used to populate help files for each function. Created automatically via `roxygen`.
 
@@ -64,15 +56,15 @@ Simulations are run by installing the samSim package and using the `genericRecov
 
 ------
 
-### Input file details (to be revised with simplified inputs)
+### Input file details 
 
-#### `simPar`
-`simPar` is a .csv file that contains the input parameters that characterize a specific simulation run, but which are *shared* among CUs. Each row represents a unique scenario (i.e. combination of operating model and management procedure). Generally it is easiest to create multiple `simPar` input files, each of which contain a coherent analysis (e.g. one input focusing on the effects of different harvest control rules across changing productivity regimes, a second input examining the effects of survey effort), but this is not strictly necessary. Contents include:
+#### `cohoSimPar`
+`cohoSimPar` is a .csv file that contains the input parameters that characterize a specific simulation run, but which are *shared* among CUs. Each row represents a unique scenario (i.e. combination of operating model and management procedure). Generally it is easiest to create multiple `simPar` input files, each of which contain a coherent analysis (e.g. one input focusing on the effects of different harvest control rules across changing productivity regimes, a second input examining the effects of survey effort), but this is not strictly necessary. Contents include:
   
   - `scenario` - scenario name
   - `nameOM` - operating model name
   - `nameMP` - management procedure name
-  - `keyVar` - focal variable of the analysis; subjective since typically multiple variables will differ among scenarios, but should be a focal point of main figures. Currently can be one of the following arguments: `prodRegime`, `synch`, `expRate`, `ppnMix`, `sigma`, `endYear`, `adjustAge`, `mixOUSig`, `adjustForecast`, `adjustEnRoute`, `obsSig`, `obsMixCatch` (**NOTE these should eventually be defined explicitly**)
+  - `keyVar` - focal variable of the analysis; subjective since typically multiple variables will differ among scenarios, but should be a focal point of main figures. Currently can be one of the following arguments: `prodRegime`, `synch`, `expRate`, `ppnMix`, `sigma`, `endYear`, `adjustAge`, `mixOUSig`, `adjustForecast`, `adjustEnRoute`, `obsSig`, `obsMixCatch` (**NOTE, to be defined explicitly**)
   - `plotOrder` - order in which grouped scenarios will be plotted (useful when keyVar is not an ordinal or numeric variable)
   - `species` - lower case species name (chum and sockeye have been tested robustly; pink and coho have not; chinook should be used with extreme caution since most stocks do not meet assumptions of the model)
   - `simYears` - length of the simulation period (excluding priming period)
@@ -107,8 +99,8 @@ Simulations are run by installing the samSim package and using the `genericRecov
   - `adjustEnRouteSig` - scalar on en route mortality rates
 
 
-#### `CUPars`
-`CUPars` are .csv files that contain CU-specific input parameters. Note that these parameters should *not* vary among simulation runs. Differences in operating models that involve CU-specific traits (e.g. population dynamics) can typically be introduced via options in the `simPar` file. Each row represents a specific CU. 
+#### `cohoCUPars`
+`cohoCUPars` is a .csv file that contain CU-specific input parameters. Note that these parameters should *not* vary among simulation runs. Differences in operating models that involve CU-specific traits (e.g. population dynamics) can typically be introduced via options in the `cohoSimPar` file. Each row represents a specific CU. 
 
 Mandatory contents include:
 
@@ -150,3 +142,23 @@ Optional contents include:
   - Necessary if modeling forecast process
     - `meanForecast` - mean forecast relative to observed
     - `sdForecast` - interannual standard deviation of forecast
+
+#### `cohoRecDatTrm`
+
+`cohoRecDatTrm`  is a .csv file that contains the historical spawner and recruitment data for plotting purposes. The column labels are as follows:
+  - `stk` - CU identification number (can be assigned arbitrarily or based on previous modeling exercises)
+  - `yr` - brood year
+  - `ets` - effective total spawner numbers, accounting for proportional spawning success
+  - `totalSpwn` - total spawner numbers. For interior Fraser Coho, this is equal to ets.
+  - `rec2` - abundance of adult recruitment at age 2, aligned by brood year
+  - `rec3` - abundance of adult recruitment at age 3, aligned by brood year  
+  - `rec4` - abundance of adult recruitment at age 4, aligned by brood year
+  - `rec5` - abundance of adult recruitment at age 5, aligned by brood year
+  - `rec6` - abundance of adult recruitment at age 6, aligned by brood year
+  
+### Changes from samSim package 
+
+1) Removing species-specific code references. Life history types will be specified through new fields in the CUPars.csv input file (e.g., firstAgeRec, maxAgeRec, obsBYlag)
+2) Removing performance measures specific to the TAM harvest control rule option used for Fraser sockeye
+3) Adding a new SR model option that includes a marine survival co-variate (needed in the short-term for Interior Fraser Coho)
+4) Adding performance measures needed to calculate LRPs

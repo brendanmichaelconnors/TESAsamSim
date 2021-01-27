@@ -59,7 +59,7 @@ simPar %>%
 ```
 
 
-By default `genericrecoverySim()` calculates and stores a large number of CU-specific performance metrics each simulation year. Stable performance metric outputs also typically require several hundred to several thousand trials per scenario (i.e. unique combination of operating model and management procedure). As a result, while it is possible to run the simulations on a single core, it is not advisable except as an initial check to make sure that the provided inputs do not cause the model to crash.
+The function `genericrecoverySim()` calculates  a large number of CU-specific performance metrics each simulation year. For the TESA workshop, only 'true' and observed spawner abundances, 'true' and observed recruitment, and true alpha and beta parameter are stored in a csv file in the directory, `outputs/simData/`. Stable performance metric outputs also typically require several hundred to several thousand trials per scenario (i.e. unique combination of operating model and management procedure). As a result, while it is possible to run the simulations on a single core, it is not advisable except as an initial check to make sure that the provided inputs do not cause the model to crash.
 
 Here, the `parallel`, `doParallel`, and `foreach` packages are used to run multiple scenarios simultaneously.
 
@@ -67,14 +67,14 @@ Here, the `parallel`, `doParallel`, and `foreach` packages are used to run multi
 ```{r runSim, echo=TRUE, warning=FALSE}
 ## First check to ensure that a single scenario can be run (only a small number
 # of trials necessary)
-genericRecoverySim(simPar=simPar[3,], cuPar=cuPar,  srDat=srDat,
+genericRecoverySim(simPar=simPar[1,], cuPar=cuPar,  srDat=srDat,
             variableCU=FALSE, ricPars=NULL, #ricPars,  #cuCustomCorrMat = cuCustomCorrMat,
-            dirName="test", nTrials=3, makeSubDirs=FALSE, random=FALSE)
+            dirName="example", nTrials=3, makeSubDirs=FALSE, random=FALSE)
 
 
 ## Define a larger number of simulations to be run (note still well below 
 ## suggested number for stability)
-nTrials <- 50#150
+nTrials <- 50
 
 ## Divide each scenario into a list element to pass to parLapply()
 simsToRun <- split(simPar, seq(nrow(simPar)))

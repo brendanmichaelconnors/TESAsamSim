@@ -200,7 +200,8 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
     ricA <- dum$pMed[["alpha"]]
     ricB <- dum$pMed[["beta"]]
     ricSig <- dum$pMed[["sigma"]]
-    ricGamma <- ifelse(model == "rickerSurv", dum$pMed[["gamma"]], NA)
+    # Assuming all CUs use the same type of stock-recruitment model, re: rickerSurv
+    ricGamma <- ifelse(model[1] == "rickerSurv", dum$pMed[["gamma"]], NA)
     if (is.null(larkPars) == FALSE) {
       #getSRPars provides quantiles as well which can be used for high/low prod
       #treatments but this is currently replaced by applying a simple scalar
@@ -233,6 +234,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   } else {
     alpha <- refAlpha
   }
+
 
   # is the productivity scenario stable
   stable <- ifelse(prod %in% c("decline", "divergent", "divergentSmall",
@@ -267,10 +269,14 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
     prodScalars == "1" ~ "stable",
     prodScalars == "1.35" ~ "increase"
   )
+
+  # Include time-varying trends in beta (To Be Included)
   beta <- ifelse(model == "ricker" | model == "rickerSurv", ricB, larB)
   if (is.null(simPar$adjustBeta) == FALSE) {
     beta <- beta * simPar$adjustBeta
   }
+  finalBeta <- beta #* betaScalars
+
   # Adjust sigma up or down
   sig <- ifelse(model == "ricker" | model=="rickerSurv", ricSig, larSig) * adjSig
 
@@ -503,7 +509,10 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   obsExpRateAg <- matrix(NA, nrow = nYears, ncol = nTrials)
   spwnrArray <- array(NA, dim = c(nYears, nCU, nTrials))
   recArray <- array(NA, dim = c(nYears, nCU, nTrials))
+  obsSpwnrArray <- array(NA, dim = c(nYears, nCU, nTrials))
+  obsRecArray <- array(NA, dim = c(nYears, nCU, nTrials))
   alphaArray <- array(NA, dim = c(nYears, nCU, nTrials))
+  betaArray <- array(NA, dim = c(nYears, nCU, nTrials))
   returnArray <- array(NA, dim = c(nYears, nCU, nTrials))
   logRSArray <- array(NA, dim = c(nYears, nCU, nTrials))
   recDevArray <- array(NA, dim = c(nYears, nCU, nTrials))
@@ -572,6 +581,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
     ## Population dynamics
     S <- matrix(NA, nrow = nYears, ncol = nCU)
     alphaMat <- matrix(NA, nrow = nYears, ncol = nCU)
+    betaMat <- matrix(NA, nrow = nYears, ncol = nCU)
     alphaPrimeMat <- matrix(NA, nrow = nYears, ncol = nCU) # variable used to estimate sEq, sGen and sMsy when spawners generated w/ larkin
     ppnAges <- array(NA, dim=c(nYears, nCU, nAges), dimnames=NULL)
     ppnCatches <- matrix(NA, nrow = nYears, ncol = nCU)
@@ -693,6 +703,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
 
       ## Population model: store SR pars, spawner, and recruit abundances
       alphaMat[y, ] <- refAlpha
+      betaMat[y, ] <- beta
 
       for (k in 1:nCU) {
         S[y, k] <- recOut[[k]]$ets[y]
@@ -934,7 +945,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
 
     #prime AR error
     laggedError[y, ] <- log(recBY[y, ] / S[y, ]) -
-      (alphaMat[y, ] - beta * S[y, ])
+      (alphaMat[y, ] - betaMat[y, ] * S[y, ])
 
 
 
@@ -958,6 +969,18 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
         } #end if stable == FALSE and inside trendPeriod
       } else {
         alphaMat[y, ] <- alphaMat[y - 1, ]
+      } #end if y > (nPrime + 1)
+
+      # Specify beta
+      #In first year, switch from reference beta ; add trend for 3 generations by default
+      if (y > (nPrime + 1)) {
+        if (stable == FALSE & y < (nPrime + trendLength + 1)) {
+          betaMat[y, ] <- betaMat[y - 1, ] #+ trendBeta
+        } else {
+          betaMat[y, ] <- finalBeta
+        } #end if stable == FALSE and inside trendPeriod
+      } else {
+        betaMat[y, ] <- betaMat[y - 1, ]
       } #end if y > (nPrime + 1)
 
       #Estimate BMs if normative period not being used, otherwise assume they are equal to last year of observation
@@ -1541,7 +1564,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
 
       # Get marine rvival covariate (only used for rickerSurv SR model)
       ## - all CUs have the same marine survival (only option available at present)
-      if(model== "rickerSurv"){
+      if(model[1]== "rickerSurv"){
         if (y == nPrime+1) mSurvAge4[1:nPrime, n] <- rep(exp(mu_logCoVar),nPrime)
         mSurvAge4[y, n]<-rnorm(1,mu_logCoVar,sig_logCoVar)
         if (mSurvAge4[y, n] > max_logCoVar) mSurvAge4[y, n] <- max_logCoVar
@@ -1578,7 +1601,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
       for (k in 1:nCU) {
         if (S[y, k] > 0) {
           if (model[k] == "ricker") {
-            dum <- rickerModel(S[y, k], alphaMat[y, k], beta[k],
+            dum <- rickerModel(S[y, k], alphaMat[y, k], betaMat[y,k],
                                error = errorCU[y, k], rho = rho,
                                prevErr = laggedError[y - 1, k])
             laggedError[y, k] <- dum[[2]]
@@ -1803,8 +1826,11 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
     ## Store trial specific outputs
     # Store diagnostic outputs
     spwnrArray[ , , n] <- S # these arrays generated to pass to synch list
+    obsSpwnrArray[ , , n] <- obsS # these arrays generated to pass to synch list
     recArray[ , , n] <- recBY
+    obsRecArray[ , , n] <- obsRecBY
     alphaArray[ , , n] <- alphaMat
+    betaArray[ , , n] <- betaMat
     returnArray[ , , n] <- recRY
     logRSArray[ , , n] <- logRS
     obsTotalCatch <- obsAmCatch + obsMixCatch + obsSingCatch
@@ -1927,8 +1953,8 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
                      paste(cuNameOM, cuNameMP, "cuDat.RData", sep = "_"),
                      paste(nameOM, nameMP, "cuDat.RData", sep = "_"))
 
-  saveRDS(cuList, file = paste(here("outputs/simData"), dirPath, fileName,
-                               sep = "/"), version=3)
+  # saveRDS(cuList, file = paste(here("outputs/simData"), dirPath, fileName,
+  #                              sep = "/"), version=3)
 
   #_____________________________________________________________________
   ## Aggregate outputs
@@ -1956,8 +1982,8 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
                      paste(cuNameOM, cuNameMP, "aggTimeSeries.RData",
                            sep = "_"),
                      paste(nameOM, nameMP, "aggTimeSeries.RData", sep = "_"))
-  saveRDS(agTSList, file = paste(here("outputs/simData"), dirPath, fileName,
-                                 sep = "/"), version=3)
+  # saveRDS(agTSList, file = paste(here("outputs/simData"), dirPath, fileName,
+  #                                sep = "/"), version=3)
 
   # Store aggregate data as data frame; each variable is a vector of single, trial-specific values
   yrsSeq <- (nPrime + 1):nYears
@@ -2041,26 +2067,60 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   # Create CU spawner abundance data for output
 
   for(i in 1:nTrials) {
-
+    # spwnrArray = df of number of columns = number of Cus
     spnDat.i<-as.data.frame(spwnrArray[,,i])
+    recDat.i<-as.data.frame(recArray[,,i])
+    obsSpnDat.i<-as.data.frame(obsSpwnrArray[,,i])
+    obsRecDat.i<-as.data.frame(obsRecArray[,,i])
+    alphaDat.i<-as.data.frame(alphaArray[,,i])
+    betaDat.i<-as.data.frame(betaArray[,,i])
 
-    spnDat.i<-spnDat.i %>% tibble::add_column(year=1:nrow(spwnrArray)) %>% tibble::add_column(iteration=rep(i,nrow(spwnrArray)))
+    if(nrow(spnDat.i) != nrow(recDat.i) )
+      print("warning, spawner and recruitment are not aligned in output csv file")
 
+    if(nrow(alphaDat.i) != nrow(recDat.i) )
+      print("warning, alpha and recruitment are not aligned in output csv file")
 
-    spnDat_long.i <- spnDat.i %>% dplyr::select(tidyr::starts_with("V"),iteration, year) %>% tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="spawners")
+    spnDat.i<-spnDat.i %>% tibble::add_column(year=1:nrow(spwnrArray)) %>%
+      tibble::add_column(iteration=rep(i,nrow(spwnrArray)))
+
+    spnDat_long.i <- spnDat.i %>%
+      dplyr::select( tidyr::starts_with("V"), iteration, year) %>%
+      tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="spawners")
+
     spnDat_long.i$CU<-rep(1:nCU,length=nrow(spnDat_long.i))
 
-    if (i == 1) spnDat<-spnDat_long.i
+    recDat_long.i <- recDat.i %>%
+      tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="recruits")
+    obsSpnDat_long.i <- obsSpnDat.i %>%
+      tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="obsSpawners")
+    obsRecDat_long.i <- obsRecDat.i %>%
+      tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="obsRecruits")
+    alphaDat_long.i <- alphaDat.i %>%
+      tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="alpha")
+    betaDat_long.i <- betaDat.i %>%
+      tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="beta")
+
+    srDat_long.i <- spnDat_long.i %>% tibble::add_column(recruits=recDat_long.i$recruits) %>%
+      tibble::add_column(obsSpawners=obsSpnDat_long.i$obsSpawners) %>%
+      tibble::add_column(obsRecruits=obsRecDat_long.i$obsRecruits) %>%
+      tibble::add_column(alpha=alphaDat_long.i$alpha) %>%
+      tibble::add_column(beta=betaDat_long.i$beta)
+
+
+
+
+    if (i == 1) srDatout<-srDat_long.i
     if (i > 1) {
-      spnDat <- dplyr::bind_rows(spnDat,spnDat_long.i)
+      srDatout <- dplyr::bind_rows(srDatout,srDat_long.i)
     }
 
   }
 
-  fileName <- ifelse(variableCU == "TRUE", paste(cuNameOM, cuNameMP, "CUspwnDat.csv", sep = "_"),
-                     paste(nameOM, nameMP, "CUspwnDat.csv", sep = "_"))
+  fileName <- ifelse(variableCU == "TRUE", paste(cuNameOM, cuNameMP, "CUsrDat.csv", sep = "_"),
+                     paste(nameOM, nameMP, "CUsrDat.csv", sep = "_"))
 
-  write.csv(spnDat, file = paste(here("outputs/simData"), dirPath, fileName, sep = "/"),
+  write.csv(srDatout, file = paste(here("outputs/simData"), dirPath, fileName, sep = "/"),
             row.names = FALSE)
 
 
