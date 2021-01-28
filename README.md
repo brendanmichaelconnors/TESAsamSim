@@ -4,7 +4,7 @@
 -----  
 
 **Authors: Carrie Holt, adapted from samSim by Cameron Freshwater & revised by Kendra Holt**  
-**Date: 2021-01-09 (ONGOING)**
+**Date: 2021-01-27 (ONGOING)**
 
 -----
 
@@ -77,9 +77,9 @@ Simulations are run by installing the samSim package and using the `genericRecov
   - `constrain` - if `TRUE` and harvest control rule is TAM then mixed stock fisheries are constrained
   - `singleHCR` - single stock harvest control rule (`FALSE`, `retro`, `forecast`)
   - `moveTAC` - if `TRUE` and single stock quota from low-abundance CUs is re-allocated to other CUs
-  - `prodRegime` - productivity regime (`low`, `lowStudT`, `med`, `studT`, `skew`, `skewT`, `decline`, `divergent`, `oneUp`,  `oneDown`, `high`)
-  - `startYear` - indicates when a productivity decline (if specified by `prodRegime == "decline"`) should start
-  - `endYear` - indicates when a productivity decline (if specified by `prodRegime == "decline"`) should end
+  - `prodRegime` - productivity regime (`low`, `lowStudT`, `med`, `studT`, `skew`, `skewT`, `decline`, `divergent`, `oneUp`,  `oneDown`, `high`, `scalar`, `increase`). The regimes `decline` and `increase` represent declines to 65% and increases to 135% of current productivity estimates over the length of the trend, followed by stable levels. The regime `med` represents a stable value based on the median value. 
+  - `trendLength` - indicates the number of years over which there is a trend (if `prodRegime == "decline"` or `"increase"`, or `capRegime == "decline"` or `"increase"`).
+    - `capRegime` - capacity regime (`med`, `decline`, `increase`). The regimes `decline` and `increase` represent declines to 65% and increases to 135% of current capacity estimates over the length of the trend, followed by stable levels.The regime `med` represents a stable value based on the median value. 
   - `rho` - temporal autocorrelation coefficient in recruitment deviations
   - `arSigTransform` - if `TRUE` estimates of sigma from input are transformed so that they account for temporal autocorrelation
   - `correlCU` - the correlation among CUs in recruitment deviations

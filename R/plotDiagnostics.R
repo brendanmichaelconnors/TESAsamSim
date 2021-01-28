@@ -52,16 +52,21 @@ plotDiagCU <- function(varArray, varNames, stkName = NULL, model, ricB,
     ricB <- rep(ricB, length.out = nCU)
   }
   p <- ifelse(is.null(focalCU), sample(selectCUs, 1), focalCU)
+  # Simply plot the first CU,
+  p <- 1
   cuName <- stkName[p]
 
   # Store SR pars for plotting
   #use mean value in case alpha varies over time
   trueA <- mean(varArray[ , p, "Productivity"])
+  trueB <- 1/mean(varArray[ , p, "Capacity"])
   # note that although this is "true" alpha used to forward simulate, it was
   # drawn from a distribution and may not match historical observations well
-  if (model[p] == "ricker" | model[p]=="rickerSurv"){
-    trueB <- ricB[p]
-  }
+
+  # #  Omit, as RicB is time-varrying an input from a beta matrix
+  # if (model[p] == "ricker" | model[p]=="rickerSurv"){
+  #   trueB <- ricB[p]
+  # }
   if (model[p] == "larkin"){
     trueB <- c(larBList$lag0[p], larBList$lag1[p], larBList$lag2[p],
                larBList$lag3[p])
@@ -145,9 +150,9 @@ plotDiagCU <- function(varArray, varNames, stkName = NULL, model, ricB,
   # Loop across for remainder of diagnostics
   par(mar = c(3.5, 4, 0.5, 0.5))
   #skip estimated beta
-  plotVars <- which(varNames %in% varNames[!varNames %in% c("Est Beta",
-                                                            "Obs Spawners",
-                                                            "Obs Recruits BY")])
+  plotVars <- which(varNames %in% c("Productivity", "Capacity", "Spawners",
+                                    "Recruits BY"))
+
   for (i in plotVars) {
     #do not plot if all NAs in a simulation
     if (all(is.na(varArray[, selectCUs, i]))) {
@@ -156,19 +161,22 @@ plotDiagCU <- function(varArray, varNames, stkName = NULL, model, ricB,
       text(nYears / 2, 0.5, "All 0s or NAs")
       mtext(side = 2, line = 2.5, print(varNames[i]))
     } else {
+      # replaced selectCUs with p in the plot function, to plot only the chosen CU
       temp1 <- plot(1, type="n", ylab="", xlab="", xlim = c(0.5, nYears),
-                    ylim = c(min(0, min(varArray[ , selectCUs, i],
+                    ylim = c(min(0, min(varArray[ , p, i],
                                         na.rm = TRUE)),
-                             max(varArray[ , selectCUs, i], na.rm = TRUE)))
+                             max(varArray[ , p, i], na.rm = TRUE)))
       mtext(side = 2, line = 2.5, print(varNames[i]))
       abline(v = nPrime, lty = 3) #vert line when management actions kick in
-      for(j in selectCUs){ # plot each column
+      # replaced selectCUs with p in the loop, to plot only the chosen CU
+      for(j in p){ # plot each column
         lines(varArray[, j, i], xaxt = "n", yaxt = "n", type = "l", lty = 1,
               lwd = 1.25, col = colPal[colPal$cu == j, 1])
       }
       if (i > 3) {
         #for spawner abundance plot X when CUs below threshold
-        for (j in selectCUs) {
+        # replaced selectCUs with p in loop for (j in selectCUs) to plot only 1 CU
+        for (j in p) {
           for (h in 6:length(varArray[, j, i])) {
             if (extinct[h, j] == 1) {
               text(x = h, y = 0, labels = c("X"), cex = 2.5,
@@ -178,8 +186,9 @@ plotDiagCU <- function(varArray, varNames, stkName = NULL, model, ricB,
           } #end for(h in 1:length(varArray[,j,i]))
         } #end for(j in 1:ncol(varArray[,selectCUs,i]))
       }
+      # replaced selectCUs with p in legend to plot only 1 CU
       if (i == 4 | i == 8 | i == 14 | i == 20 | i == 26) {
-        legend("topleft", legend = c(stkName[selectCUs]), ncol = 3, lty = 1,
+        legend("topleft", legend = c(stkName[p]), ncol = 3, lty = 1,
                col = colPal$col, cex = 1.1, lwd = 1.25, bg="white")
       }
     }

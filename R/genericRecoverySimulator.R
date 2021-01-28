@@ -187,11 +187,11 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   }
 
 
-  # If .csv of par dist is not passed and productivity is something other than "med", give error warning
-  if (prod != "med" & is.null(ricPars) == TRUE) {
-    stop("Full SR parameter dataset necessary to simulate alternative
-         productivity scenarios")
-  }
+  # # OMIT: If .csv of par dist is not passed and productivity is something other than "med", give error warning
+  # if (prod != "med" & is.null(ricPars) == TRUE) {
+  #   stop("Full SR parameter dataset necessary to simulate alternative
+  #        productivity scenarios")
+  # }
 
   # If .csv of par dist is passed, change from median values to sample from par dist
   if (is.null(ricPars) == FALSE) {
@@ -237,16 +237,19 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
 
 
   # is the productivity scenario stable
-  stable <- ifelse(prod %in% c("decline", "divergent", "divergentSmall",
-                               "oneUp", "oneDown"),
+  prodStable <- ifelse(prod %in% c("decline", "increase", "divergent",
+                                   "divergentSmall", "oneUp", "oneDown",
+                                   "scalar"),
                    FALSE,
                    TRUE)
 
-  # For stable trends use as placeholder for subsequent ifelse
+  # For stable productivity trends use as placeholder for subsequent ifelse
   finalAlpha <- alpha
   prodScalars <- rep(1, nCU)
   if (prod == "decline" ) {
     prodScalars <- rep(0.65, nCU)
+  } else if (prod == "increase" ) {
+    prodScalars <- rep(1.35, nCU)
   } else if (prod == "divergent") {
     prodScalars <- sample(c(0.65, 1, 1.35), nCU, replace = TRUE)
   } else if (prod == "divergentSmall") {
@@ -261,8 +264,10 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
     prodScalars <- rep(simPar$prodScalar, nCU)
   }
 
+
+  # Caculate final Alpha and trend
   finalAlpha <- prodScalars * alpha
-  trendLength <- 3 * gen
+  trendLength <- simPar$trendLength#3 * gen
   trendAlpha <- (finalAlpha - alpha) / trendLength
   cuProdTrends <- dplyr::case_when(
     prodScalars == "0.65" ~ "decline",
@@ -271,11 +276,27 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   )
 
   # Include time-varying trends in beta (To Be Included)
+  cap <- simPar$capRegime
+  capStable <- ifelse(cap %in% c("decline", "divergent", "divergentSmall",
+                                   "oneUp", "oneDown", "scalar"),
+                       FALSE,
+                       TRUE)
+
+
   beta <- ifelse(model == "ricker" | model == "rickerSurv", ricB, larB)
-  if (is.null(simPar$adjustBeta) == FALSE) {
-    beta <- beta * simPar$adjustBeta
+  capacity <- 1/beta
+
+  # For stable capacity trends use as placeholder for subsequent ifelse
+  finalCapacity <- capacity
+  capacityScalars <- rep(1, nCU)
+  if (cap == "decline" ) {
+    capacityScalars <- rep(0.65, nCU)
+  } else if (cap == "increase" ) {
+    capacityScalars <- rep(1.35, nCU)
   }
-  finalBeta <- beta #* betaScalars
+
+  finalCapacity <- capacityScalars * capacity
+  trendCapacity <- (finalCapacity - capacity) / trendLength
 
   # Adjust sigma up or down
   sig <- ifelse(model == "ricker" | model=="rickerSurv", ricSig, larSig) * adjSig
@@ -334,6 +355,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
       dplyr::group_by(stk) %>%
       dplyr::summarise(tsLength = length(ets),
                        maxRec = max(totalRec, na.rm = TRUE))
+
     # Define nPrime
     nPrime <- max(summRec[, "tsLength"])
     dumFull <- vector("list", nCU)
@@ -582,6 +604,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
     S <- matrix(NA, nrow = nYears, ncol = nCU)
     alphaMat <- matrix(NA, nrow = nYears, ncol = nCU)
     betaMat <- matrix(NA, nrow = nYears, ncol = nCU)
+    capMat <- matrix(NA, nrow = nYears, ncol = nCU)
     alphaPrimeMat <- matrix(NA, nrow = nYears, ncol = nCU) # variable used to estimate sEq, sGen and sMsy when spawners generated w/ larkin
     ppnAges <- array(NA, dim=c(nYears, nCU, nAges), dimnames=NULL)
     ppnCatches <- matrix(NA, nrow = nYears, ncol = nCU)
@@ -704,6 +727,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
       ## Population model: store SR pars, spawner, and recruit abundances
       alphaMat[y, ] <- refAlpha
       betaMat[y, ] <- beta
+      capMat[y, ] <- 1/beta
 
       for (k in 1:nCU) {
         S[y, k] <- recOut[[k]]$ets[y]
@@ -962,11 +986,11 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
       # Specify alpha
       #In first year, switch from reference alpha used in priming to testing alpha; add trend for 3 generations by default
       if (y > (nPrime + 1)) {
-        if (stable == FALSE & y < (nPrime + trendLength + 1)) {
+        if (prodStable == FALSE & y < (nPrime + trendLength + 1)) {
           alphaMat[y, ] <- alphaMat[y - 1, ] + trendAlpha
         } else {
           alphaMat[y, ] <- finalAlpha
-        } #end if stable == FALSE and inside trendPeriod
+        } #end if prodStable == FALSE and inside trendPeriod
       } else {
         alphaMat[y, ] <- alphaMat[y - 1, ]
       } #end if y > (nPrime + 1)
@@ -974,13 +998,17 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
       # Specify beta
       #In first year, switch from reference beta ; add trend for 3 generations by default
       if (y > (nPrime + 1)) {
-        if (stable == FALSE & y < (nPrime + trendLength + 1)) {
-          betaMat[y, ] <- betaMat[y - 1, ] #+ trendBeta
+        if (capStable == FALSE & y < (nPrime + trendLength + 1)) {
+          capMat[y, ] <- capMat[y - 1, ] + trendCapacity
+
+          betaMat[y, ] <- 1/capMat[y,]#betaMat[y - 1, ] + trendBeta
         } else {
-          betaMat[y, ] <- finalBeta
-        } #end if stable == FALSE and inside trendPeriod
+          capMat[y,] <- finalCapacity
+          betaMat[y, ] <- 1/capMat[y,]#finalBeta
+        } #end if prodStable == FALSE and inside trendPeriod
       } else {
-        betaMat[y, ] <- betaMat[y - 1, ]
+        capMat[y, ] <- capMat[y - 1, ]
+        betaMat[y, ] <- 1/capMat[y,]#betaMat[y - 1, ]
       } #end if y > (nPrime + 1)
 
       #Estimate BMs if normative period not being used, otherwise assume they are equal to last year of observation
@@ -1702,8 +1730,9 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
       obsExpErr <- calcErr(obsExpRate, expRate)
       forecastErr <- calcErr(foreRecRY, recRY)
 
+
       # Combine relevant data into array passed to plotting function
-      varNames <- c("Productivity", "Est Productivity", "Est Beta",
+      varNames <- c("Productivity", "Est Productivity", "Capacity", "Est Beta",
                     "Spawners", "Obs Spawners", "Recruits BY",
                     "Obs Recruits BY", "Recruits RY",
                     "Mix Catch", "Single Catch", "US Catch",
@@ -1715,7 +1744,8 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
                     "Obs US Catch Err", "Obs Exp Rate Err", "Forecast Err"
       )
 
-      plotTrialDat <- array(c(alphaMat, estRicA[ , , n], estRicB[ , , n],
+      plotTrialDat <- array(c(alphaMat, estRicA[ , , n], capMat,
+                              estRicB[ , , n],
                               S, obsS, recBY, obsRecBY, recRY,
                               mixCatch, singCatch, amCatch,
                               expRate, mixExpRate, singExpRate,
