@@ -63,7 +63,7 @@ simDataCU1 <- simData %>%
   filter(CU==1 & iteration ==1)
 
 ```
-Now we can try fitting a Dynamic Linear Model to the simulated spawner-recruitment data. The model in this case is a linearized Ricker stock-recruit model with log(recruits/spawner) as the dependent variable, log(recruits/spawner) at low spawner abundance as the intercept (alpha), and a density dependence term as the slope (beta). To fit the model we will use a function we wrote for the workshop `fitDLM()` which calls functions from the `dlm`package. We can specify time-varying alpha and or beta with TRUE/FALSE statements in the function, which determine whether or not either parameter is modeled as a dynamic latent state. For now we will set the model to estimate time-varying alpha but not beta, even thought the simulated data are based on a stationary alpha and beta.
+Now we can try fitting a Dynamic Linear Model to the simulated spawner-recruitment data. The model in this case is a linearized Ricker stock-recruit model with log(recruits/spawner) as the dependent variable, log(recruits/spawner) at low spawner abundance as the intercept (alpha), and a density dependence term as the slope (beta). To fit the model we will use a function we wrote for the workshop `fitDLM()` which calls functions from the `dlm`package. We can specify time-varying alpha and or beta with TRUE/FALSE statements in the function, which determine whether or not either parameter is modeled as a dynamic latent state that follow a random walk. For now we will set the model to estimate time-varying alpha but not beta, even thought the simulated data are based on a stationary alpha and beta.
 
 ```{r fitDLM, echo=TRUE, warning=FALSE}
 # rename a couple of columns to play nice with fitDLM. 
