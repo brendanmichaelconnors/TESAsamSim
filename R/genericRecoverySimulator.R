@@ -237,7 +237,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
 
 
   # is the productivity scenario stable
-  prodStable <- ifelse(prod %in% c("decline", "increase", "divergent",
+  prodStable <- ifelse(prod %in% c("linear", "decline", "increase", "divergent",
                                    "divergentSmall", "oneUp", "oneDown",
                                    "scalar"),
                    FALSE,
@@ -246,7 +246,9 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   # For stable productivity trends use as placeholder for subsequent ifelse
   finalAlpha <- alpha
   prodScalars <- rep(1, nCU)
-  if (prod == "decline" ) {
+  if (prod == "linear" ) {
+    prodScalars <- rep(simPar$prodPpnChange, nCU)
+  } else if (prod == "decrease" ) {
     prodScalars <- rep(0.65, nCU)
   } else if (prod == "increase" ) {
     prodScalars <- rep(1.35, nCU)
@@ -270,15 +272,16 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   trendLength <- simPar$trendLength#3 * gen
   trendAlpha <- (finalAlpha - alpha) / trendLength
   cuProdTrends <- dplyr::case_when(
-    prodScalars == "0.65" ~ "decline",
+    prodScalars < 1 ~ "decline", #== "0.65" ~ "decline",
     prodScalars == "1" ~ "stable",
-    prodScalars == "1.35" ~ "increase"
+    prodScalars > 1 ~ "increase"#== "1.35" ~ "increase"
   )
 
   # Include time-varying trends in beta (To Be Included)
   cap <- simPar$capRegime
-  capStable <- ifelse(cap %in% c("decline", "divergent", "divergentSmall",
-                                   "oneUp", "oneDown", "scalar"),
+  capStable <- ifelse(cap %in% c("linear", "decline", "increase",
+                                 "divergent", "divergentSmall",
+                                 "oneUp", "oneDown", "scalar"),
                        FALSE,
                        TRUE)
 
@@ -289,9 +292,11 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   # For stable capacity trends use as placeholder for subsequent ifelse
   finalCapacity <- capacity
   capacityScalars <- rep(1, nCU)
-  if (cap == "decline" ) {
+  if (cap == "linear" ) {
+    capacityScalars <- rep(simPar$capPpnChange, nCU)
+  } else if (cap == "decline" ) {
     capacityScalars <- rep(0.65, nCU)
-  } else if (cap == "increase" ) {
+  }else if (cap == "increase" ) {
     capacityScalars <- rep(1.35, nCU)
   }
 

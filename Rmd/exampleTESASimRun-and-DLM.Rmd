@@ -52,7 +52,7 @@ genericRecoverySim(simPar=simPar[1,], cuPar=cuPar,  srDat=srDat,
 
 ```
 
-In this example the outputs of the simulation are stored in outputs/simData/example. So let's load them and, since the simulator generates simulated data for 4 populations (CUs) and 2 Monte Carlo trials lets just grab the output from one of them.
+In this example the outputs of the simulation are stored in outputs/simData/example. So let's load them and, since the simulator generates simulated data for 5 populations (CUs) and 2 Monte Carlo trials lets just grab the output from one of them.
 
 ```{r loadSimData, echo=TRUE, warning=FALSE}
 simData <- read.csv(here("outputs", "simData", "example",
