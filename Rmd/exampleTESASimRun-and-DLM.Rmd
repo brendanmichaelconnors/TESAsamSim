@@ -1,17 +1,17 @@
 ---
 title: "Example TESAsamSim Run and DLM fit"
 author: "Carrie Holt and Brendan Connors"
-date: "January 26, 2021"
+date: "January 28, 2021"
 output:
   html_document: default
   pdf_document: default
 ---
 
-This document illustrates how to simulate some spawner-recruitment data using the `TESAsamSim` R package and then fit a linear state-space model (aka Dynamic Linear model) with potentially time-varying parameters. The model is fit via Maximum likelihood followed by Kalman filtering and smoothing using a wrapper for the `dlm` R package (see [here](https://cran.r-project.org/web/packages/dlm/index.html)). For this illustrative example the simulation is based on Interior Fraser River coho salmon.
+This document illustrates how to simulate some stock-recruitment data using the `TESAsamSim` R package and then fit a linear state-space model (aka Dynamic Linear model) with potentially time-varying parameters to it. The model is fit via Maximum likelihood followed by Kalman filtering and smoothing using a wrapper for the `dlm` R package (see [here](https://cran.r-project.org/web/packages/dlm/index.html)). For this illustrative example the simulations are based on the population characteristics of Interior Fraser River coho salmon.
 
 
-First install necessary packages and load Interior Fraser Coho data. 
-```{r importData, echo=TRUE, warning=FALSE}
+First install necessary packages and load Interior Fraser Coho data used to condition the simulations. 
+```{r importData, message=FALSE,  warning=FALSE, results="hide"}
 ## Check if necessary packages are available and install if necessary
 listOfPackages <- c("here", "parallel", "doParallel", "foreach", 
                     "tidyverse", "tictoc", "TESAsamSim")
@@ -26,10 +26,7 @@ lapply(listOfPackages, require, character.only = TRUE)
 source(here("dlm-wrapper.R"))
 
 ## Load relevant input data
-# Simulation run parameters describing different scenarios
-simPar <- read.csv(here("data", "IFCohoPars",
-                         "cohoSimPar.csv"),
-                       stringsAsFactors = F)
+
 # CU-specific parameters
 cuPar <- read.csv(here("data", "IFCohoPars", "cohoCUpars.csv"),
                   stringsAsFactors=F)
@@ -38,154 +35,137 @@ cuPar <- read.csv(here("data", "IFCohoPars", "cohoCUpars.csv"),
 srDat <- read.csv(here("data", "IFCohoPars", "cohoRecDatTrim.csv"),
                   stringsAsFactors=F)
 
+```
+
+Next, simulate some stock-recruitment data based on the parameters specified in `cuPar` and the scenarios specified in `simPar` which include whether population productivity or capacity are stationary or time-varying. To do this  use the `genericRecoverySim()` function. For our illustrative purposes we only need one Monte Carlo trial, but the simulator needs to run at least two, and we'll do this separately for each scenario (row) in `simPar` which are different combinations of stable or declining productivity and capacity.
+
+```{r runSim, message=FALSE,  warning=FALSE, results="hide"}
+# Simulation run parameters describing different scenarios
+simPar <- read.csv(here("data", "IFCohoPars",
+                         "cohoSimPar.v2.csv"),
+                       stringsAsFactors = F)
+
+# Directory where simulated data will be saved
 scenNames <- unique(simPar$scenario)
 dirNames <- sapply(scenNames, function(x) paste(x, unique(simPar$species),
                                                 sep = "_"))
-```
-
-Next, simulate some spawner-recruitment data, based on the known parameters specified in `cuPar` using the `genericRecoverySim()` function. For our illustrative purposes we only need one Monte Carlo trial, but simulator needs to run at least two.
-
-```{r runSim, echo=TRUE, warning=FALSE}
-genericRecoverySim(simPar=simPar[1,], cuPar=cuPar,  srDat=srDat,
+# loop through each scenario and simulate data
+for (i in 1:4){
+  genericRecoverySim(simPar=simPar[i,], cuPar=cuPar,  srDat=srDat,
             variableCU=FALSE, ricPars=NULL, #ricPars,  #cuCustomCorrMat = cuCustomCorrMat,
-            dirName="example", nTrials=2, makeSubDirs=FALSE, random=FALSE)
+            dirName="example", nTrials=2, makeSubDirs=FALSE, random=FALSE)}
+
 
 ```
 
-In this example the outputs of the simulation are stored in outputs/simData/example. So let's load them and, since the simulator generates simulated data for 5 populations (CUs) and 2 Monte Carlo trials lets just grab the output from one of them.
+In this example the outputs of the simulations are separately stored in ./outputs/simData/example, as a .csv for each scenario. So let's load one of them and since the simulator generates simulated data for 5 populations (Conservation Units) and 2 Monte Carlo trials lets just grab the output from one of them.
 
 ```{r loadSimData, echo=TRUE, warning=FALSE}
-simData <- read.csv(here("outputs", "simData", "example",
-                         "ref_medFixedER_CUsrDat.csv"),
+simDataStationary <- read.csv(here("outputs", "simData", "example",
+                         "ref_stationary_CUsrDat.csv"),
                        stringsAsFactors = F)
 
-simDataCU1 <- simData %>% 
+simDataStationaryCU1 <- simDataStationary %>% 
   filter(CU==1 & iteration ==1)
 
 ```
-Now we can try fitting a Dynamic Linear Model to the simulated spawner-recruitment data. The model in this case is a linearized Ricker stock-recruit model with log(recruits/spawner) as the dependent variable, log(recruits/spawner) at low spawner abundance as the intercept (alpha), and a density dependence term as the slope (beta). To fit the model we will use a function we wrote for the workshop `fitDLM()` which calls functions from the `dlm`package. We can specify time-varying alpha and or beta with TRUE/FALSE statements in the function, which determine whether or not either parameter is modeled as a dynamic latent state. For now we will set the model to estimate time-varying alpha but not beta, even thought the simulated data are based on a stationary alpha and beta.
+Now we can try fitting a Dynamic Linear Model to the simulated stock-recruitment data. The model in this case is a linearized Ricker stock-recruit model with log(recruits/spawner) as the dependent variable, log(recruits/spawner) at low spawner abundance as the intercept (alpha), and a density dependence term as the slope (beta which is the inverse of capacity). To fit the model use a wrapper function we wrote for the workshop `fitDLM()` which calls functions from the `dlm`package. We can specify whether the model estimate alpha and/or beta modeled as dynamic latent states that follow a random walk with TRUE/FALSE statements in the function call. 
+
+For now we will set the model to estimate time-varying alpha `alpha_vary=TRUE` but not beta `beta_vary=TRUE`, even thought the simulated data are based on a stationary alpha and beta.
 
 ```{r fitDLM, echo=TRUE, warning=FALSE}
 # rename a couple of columns to play nice with fitDLM. 
-colnames(simDataCU1)[c(2,4,5,8,9)] <- c("byr","spwn", "rec", "alpha_true", "beta_true")
+colnames(simDataStationaryCU1)[c(2,4,5,8,9)] <- c("byr","spwn", "rec", "alpha_true", "beta_true")
 
 # fit DLM
-dlm_model <- fitDLM(data = simDataCU1,
+dlm_model <- fitDLM(data = simDataStationaryCU1,
               alpha_vary = TRUE,
               beta_vary = FALSE)
 
 ```
 
-The function `fitDLM` returns a list with two elements. The first element `results` is a data frame containing the original simulated data plus Kalman filtered and smoothed estimates of alpha and beta over time. The second is the AICc of the model though note that there are unanswered questions about whether this is calculated appropriately.  
+The function `fitDLM` returns a list with two elements. The first element `results` is a data frame containing the original simulated data plus Kalman filtered and smoothed estimates of alpha and beta over time. The second element is the AICc of the model though it should be noted that we have some unanswered questions about whether this is calculated appropriately.  
 
 And then we can plot the simulated stock-recruitment data (with points color-coded by year) and compare the true and estimated values of alpha (intercept) and beta (slope). 
 
 ```{r plotDLM, echo=TRUE, warning=FALSE, fig.width=8, fig.height=4}
-# first a little housekeeping
-library(ggpubr)
-
-spwn_range<-seq(0,max(dlm_model$results$spwn)*1.2,length.out=100)
-r_pred <- matrix(NA,nrow=length(dlm_model$results$byr), ncol=length(spwn_range))
-
-
-for(i in 1:length(dlm_model$results$byr)){
-  r_pred[i,]<-exp(median(dlm_model$results$lnalpha[i]))*spwn_range*exp(dlm_model$results$beta[i]*spwn_range)
-}
-
-rownames(r_pred)<-dlm_model$results$byr
-colnames(r_pred)<-spwn_range
-
-r_pred<-cbind(dlm_model$results$byr,r_pred)
-colnames(r_pred)[1]<-c("byr")
-sr_pred<-pivot_longer(data =as.data.frame(r_pred), cols=!byr, names_to="spwn",values_to="rec" )
-sr_pred$spwn<-as.numeric(sr_pred$spwn)
-
-max_spawn <- max(dlm_model$result$spwn)
-max_rec <- max(dlm_model$result$spwn)
-
-# create each panel for plot starting with spawner-recruitment relationship
-
-a <- ggplot(data=dlm_model$results, aes(x = spwn, y = rec, colour=factor(byr)))+
-  geom_point(size = 3) +
-  coord_cartesian(xlim=c(0, max_spawn*1.2), ylim=c(0,max_rec*1.2)) +
-  xlab("Spawners") +
-  ylab("Recruits") +
-  geom_line(data = sr_pred, aes(x = spwn, y = rec, colour=factor(byr)), size = 0.5) +
-  scale_colour_viridis_d()+
-  theme_bw() +
-  theme(strip.text.x = element_text(size=8),
-        axis.title = element_text(size=10),
-        axis.text = element_text(size=7),
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        legend.position = "none",
-        plot.margin=unit(c(0.5,0.5,0.5,0.5), units="lines"))
-
-# next plot true and estimate alpha
-
-b <- ggplot(data=dlm_model$results, aes(x = byr, y = lnalpha )) +
-  geom_line( color="black", size = 1)+
-  geom_ribbon(aes(ymin = lnalpha-lnalpha_se*2, ymax = lnalpha+lnalpha_se*2), 
-              fill = "grey80", alpha=0.5, linetype=2, colour="gray46") +
-  geom_line(aes(x = byr, y = alpha_true), color="red", size = 1)+
-  ylab("alpha") +
-  xlab("") +
-  scale_y_continuous(position = "right", limits=c(0,3)) +
-  theme_bw() +
-  theme(strip.text.x = element_text(size=8),
-        axis.title = element_text(size=10),
-        axis.text = element_text(size=7),
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        legend.position = "none",
-        plot.margin=unit(c(0.5,2.25,0.05,0.5), units="lines"))+
-  annotate("text", x = c(30,30),
-           y = c(2.7, 2.5),
-           label = c("True", "Estimated"),
-           color= c("red", "black"), 
-           size=3,
-           hjust=0) +
-  annotate("segment", x = c(28,28),
-           xend=c(29.5,29.5),
-           y = c(2.7, 2.5),
-           yend = c(2.7, 2.5),
-           lty = c(1,1),
-           color=c("red", "black"), 
-           size=1)
-
-# next plot true and estimate beta
-
-c<- ggplot(data=dlm_model$results, aes(x = byr, y = beta)) +
-  geom_line( color="black", size = 1)+
-  geom_ribbon(aes(ymin = beta-beta_se*2, ymax = beta+beta_se*2), 
-              fill = "grey80", alpha=0.5, linetype=2, colour="gray46") +
-  geom_line(aes(x = byr, y = -beta_true), color="red", size = 1)+
-  xlab("Brood year") +
-  ylab("beta") +
-  scale_y_continuous(position = "right", limits=c(-0.0002,-0.000004)) +
-  theme_bw() +
-  theme(strip.text.x = element_text(size=8),
-        axis.title = element_text(size=10),
-        axis.text = element_text(size=7),
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        legend.position = "none",
-        plot.margin=unit(c(0.05,0.5,0.5,0.5), units="lines"))
-
-# combine plots
-g <- ggarrange(a, ggarrange(b,c, nrow =2),
-  ncol=2)
-
-g
+plotDLM(dlm_model)
 ```
 
+No bad, in this case the model does a good job recovering the true (non-time-varying) parameter estimates. 
 
+Now let see how the model does with a population that has time varying productivity (alpha) which increases threefold over the last 30 year of the simulation. 
 
+```{r plotDLM2, echo=TRUE, warning=FALSE, fig.width=8, fig.height=4}
 
+# first read in simulate data for scenario with declining productivity
+simDatadeclineProd <- read.csv(here("outputs", "simData", "example",
+                         "ref_declineProd_CUsrDat.csv"),
+                       stringsAsFactors = F)
 
+simDatadeclineProdyCU1 <- simDatadeclineProd %>% 
+  filter(CU==1 & iteration ==1)
 
+colnames(simDatadeclineProdyCU1)[c(2,4,5,8,9)] <- c("byr","spwn", "rec", "alpha_true", "beta_true")
 
+# then fit DLM
+dlm_model <- fitDLM(data = simDatadeclineProdyCU1,
+              alpha_vary = TRUE,
+              beta_vary = FALSE)
 
+# then plot
+plotDLM(dlm_model)
+```
+
+This is pretty decent as well. How about a scenario where only capacity (1/beta) changes over time and where we fit a model that only estimates time varying beta?  
+
+```{r plotDLM3, echo=TRUE, warning=FALSE, fig.width=8, fig.height=4}
+
+# first read in simulate data for scenario with declining productivity
+simDatadeclineCapacity <- read.csv(here("outputs", "simData", "example",
+                         "ref_declineCapacity_CUsrDat.csv"),
+                       stringsAsFactors = F)
+
+simDatadeclineCapacityCU1 <- simDatadeclineCapacity %>% 
+  filter(CU==1 & iteration ==1)
+
+colnames(simDatadeclineCapacityCU1)[c(2,4,5,8,9)] <- c("byr","spwn", "rec", "alpha_true", "beta_true")
+
+# then fit DLM
+dlm_model <- fitDLM(data = simDatadeclineCapacityCU1,
+              alpha_vary = FALSE,
+              beta_vary = TRUE)
+
+# then plot
+plotDLM(dlm_model)
+```
+
+The model does well here too. 
+
+Lastly, how does the DLM do with a population that has time varying productivity (alpha) and capacity (1/beta)?  
+
+```{r plotDLM4, echo=TRUE, warning=FALSE, fig.width=8, fig.height=4}
+
+# first read in simulate data for scenario with declining productivity and capacity
+simDatadeclineProdCapacity <- read.csv(here("outputs", "simData", "example",
+                         "ref_declineProd&Capacity_CUsrDat.csv"),
+                       stringsAsFactors = F)
+
+simDatadeclineProdCapacityCU1 <- simDatadeclineProdCapacity %>% 
+  filter(CU==1 & iteration ==1)
+
+colnames(simDatadeclineProdCapacityCU1)[c(2,4,5,8,9)] <- c("byr","spwn", "rec", "alpha_true", "beta_true")
+
+# then fit DLM
+dlm_model <- fitDLM(data = simDatadeclineProdCapacityCU1,
+              alpha_vary = TRUE,
+              beta_vary = TRUE)
+
+# then plot
+plotDLM(dlm_model)
+```
+
+Looks like the model has a hard time estimating both alpha and beta, for this particular simulated dataset when both cange the same magnitude and direction over the same time period.  
 
 
 
