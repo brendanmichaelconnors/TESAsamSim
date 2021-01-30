@@ -21,7 +21,7 @@ A summary of relevant files and how to run a simulation are provided below. Most
 [After installing the package development prerequisites](https://support.rstudio.com/hc/en-us/articles/200486498) install `samSim` with:
 
 ```{r}
-devtools::install_github("Pacific-salmon-assess/TESAsamSim")
+devtools::install_github("TESA-workshops/TESAsamSim")
 ```
 
 -----
