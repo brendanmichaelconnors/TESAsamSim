@@ -101,21 +101,45 @@ plotDLM <- function(dlm_model = dlm_model){
 
   # create each panel for plot starting with spawner-recruitment relationship
 
-  a <- ggplot(data=dlm_model$results, aes(x = spwn, y = rec, colour=factor(byr)))+
+  a <- ggplot(data=dlm_model$results, aes(x = spwn, y = rec, colour=byr))+
     geom_point(size = 3) +
     coord_cartesian(xlim=c(0, max_spawn*1.2), ylim=c(0,max_rec*1.2)) +
-    scale_colour_viridis_d()+
+    scale_colour_viridis_c()+
     xlab("Spawners") +
     ylab("Recruits") +
-    geom_line(data = sr_pred, aes(x = spwn, y = rec, colour=factor(byr)), size = 0.5) +
+    geom_line(data = sr_pred, aes(x = spwn, y = rec, group=byr, colour=byr), size = 0.5) +
     theme_bw() +
+    labs(color='Year') +
     theme(strip.text.x = element_text(size=8),
           axis.title = element_text(size=10),
           axis.text = element_text(size=7),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
-          legend.position = "none",
+          legend.justification = c(0,0),
+          legend.position = c(0.1,0.765),
+          legend.key.size = unit(6, "pt"),
+          legend.background = element_blank(),
+          legend.text = element_text(size = 6),
+          legend.title = element_text(size = 7),
           plot.margin=unit(c(0.5,0.5,0.5,0.5), units="lines"))
+
+
+  theme(strip.text = element_text(size=6),
+        axis.title = element_text(size=9),
+        axis.text = element_text(size=6),
+
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+
+
+
+
+
+
+
+
+
+
 
   # next plot true and estimate alpha
 
