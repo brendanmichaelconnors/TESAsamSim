@@ -1,13 +1,13 @@
 ---
 title: "Example TESAsamSim Run and DLM fit"
-author: "Carrie Holt and Brendan Connors"
+author: "Brendan Connors and Carrie Holt"
 date: "January 28, 2021"
 output:
   html_document: default
   pdf_document: default
 ---
 
-This document illustrates how to simulate some stock-recruitment data using the `TESAsamSim` R package and then fit a linear state-space model (aka Dynamic Linear model) with potentially time-varying parameters to it. The model is fit via Maximum likelihood followed by Kalman filtering and smoothing using a wrapper for the `dlm` R package (see [here](https://cran.r-project.org/web/packages/dlm/index.html)). For this illustrative example the simulations are based on the population characteristics of Interior Fraser River coho salmon.
+This document illustrates how to simulate some stock-recruitment data using the `TESAsamSim` R package and then fit a linear state-space model (aka Dynamic Linear model) with potentially time-varying parameters to it. The model is fit via Maximum likelihood followed by Kalman filtering and smoothing using a wrapper for the `dlm` R package (see [here](https://cran.r-project.org/web/packages/dlm/index.html)). The wrapper is based in part on code generously provided by Cody Szuwalski (NOAA). For this illustrative example the simulations are based on the population characteristics of Interior Fraser River coho salmon.
 
 
 First install necessary packages and load Interior Fraser Coho data used to condition the simulations. 
@@ -98,18 +98,18 @@ Now let see how the model does with a population that has time varying productiv
 
 ```{r plotDLM2, echo=TRUE, warning=FALSE, fig.width=8, fig.height=4}
 
-# first read in simulate data for scenario with declining productivity
-simDatadeclineProd <- read.csv(here("outputs", "simData", "example",
-                         "ref_declineProd_CUsrDat.csv"),
+# first read in simulate data for scenario with increasing productivity
+simDataIncreaseProd <- read.csv(here("outputs", "simData", "example",
+                         "ref_increaseProd_CUsrDat.csv"),
                        stringsAsFactors = F)
 
-simDatadeclineProdyCU1 <- simDatadeclineProd %>% 
+simDataIncreaseProdyCU1 <- simDataIncreaseProd %>% 
   filter(CU==1 & iteration ==1)
 
-colnames(simDatadeclineProdyCU1)[c(2,4,5,8,9)] <- c("byr","spwn", "rec", "alpha_true", "beta_true")
+colnames(simDataIncreaseProdyCU1)[c(2,4,5,8,9)] <- c("byr","spwn", "rec", "alpha_true", "beta_true")
 
 # then fit DLM
-dlm_model <- fitDLM(data = simDatadeclineProdyCU1,
+dlm_model <- fitDLM(data = simDataIncreaseProdyCU1,
               alpha_vary = TRUE,
               beta_vary = FALSE)
 
@@ -121,18 +121,18 @@ This is pretty decent as well. How about a scenario where only capacity (1/beta)
 
 ```{r plotDLM3, echo=TRUE, warning=FALSE, fig.width=8, fig.height=4}
 
-# first read in simulate data for scenario with declining productivity
-simDatadeclineCapacity <- read.csv(here("outputs", "simData", "example",
-                         "ref_declineCapacity_CUsrDat.csv"),
+# first read in simulate data for scenario with increaseing productivity
+simDataIncreaseCapacity <- read.csv(here("outputs", "simData", "example",
+                         "ref_increaseCapacity_CUsrDat.csv"),
                        stringsAsFactors = F)
 
-simDatadeclineCapacityCU1 <- simDatadeclineCapacity %>% 
+simDataIncreaseCapacityCU1 <- simDataIncreaseCapacity %>% 
   filter(CU==1 & iteration ==1)
 
-colnames(simDatadeclineCapacityCU1)[c(2,4,5,8,9)] <- c("byr","spwn", "rec", "alpha_true", "beta_true")
+colnames(simDataIncreaseCapacityCU1)[c(2,4,5,8,9)] <- c("byr","spwn", "rec", "alpha_true", "beta_true")
 
 # then fit DLM
-dlm_model <- fitDLM(data = simDatadeclineCapacityCU1,
+dlm_model <- fitDLM(data = simDataIncreaseCapacityCU1,
               alpha_vary = FALSE,
               beta_vary = TRUE)
 
@@ -146,18 +146,18 @@ Lastly, how does the DLM do with a population that has time varying productivity
 
 ```{r plotDLM4, echo=TRUE, warning=FALSE, fig.width=8, fig.height=4}
 
-# first read in simulate data for scenario with declining productivity and capacity
-simDatadeclineProdCapacity <- read.csv(here("outputs", "simData", "example",
-                         "ref_declineProd&Capacity_CUsrDat.csv"),
+# first read in simulate data for scenario with increasing productivity and capacity
+simDataIncreaseProdCapacity <- read.csv(here("outputs", "simData", "example",
+                         "ref_IncreaseProd&Capacity_CUsrDat.csv"),
                        stringsAsFactors = F)
 
-simDatadeclineProdCapacityCU1 <- simDatadeclineProdCapacity %>% 
+simDataIncreaseProdCapacityCU1 <- simDataIncreaseProdCapacity %>% 
   filter(CU==1 & iteration ==1)
 
-colnames(simDatadeclineProdCapacityCU1)[c(2,4,5,8,9)] <- c("byr","spwn", "rec", "alpha_true", "beta_true")
+colnames(simDataIncreaseProdCapacityCU1)[c(2,4,5,8,9)] <- c("byr","spwn", "rec", "alpha_true", "beta_true")
 
 # then fit DLM
-dlm_model <- fitDLM(data = simDatadeclineProdCapacityCU1,
+dlm_model <- fitDLM(data = simDataIncreaseProdCapacityCU1,
               alpha_vary = TRUE,
               beta_vary = TRUE)
 
@@ -165,7 +165,7 @@ dlm_model <- fitDLM(data = simDatadeclineProdCapacityCU1,
 plotDLM(dlm_model)
 ```
 
-Looks like the model has a hard time estimating both alpha and beta, for this particular simulated dataset when both cange the same magnitude and direction over the same time period.  
+Looks like the model has a hard time estimating both alpha and beta, at least for this particular simulated dataset, when both change the same magnitude and direction over the same time period.  
 
 
 
