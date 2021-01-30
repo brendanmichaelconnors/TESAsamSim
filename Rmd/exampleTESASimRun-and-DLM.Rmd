@@ -42,7 +42,7 @@ Next, simulate some stock-recruitment data based on the parameters specified in 
 ```{r runSim, message=FALSE,  warning=FALSE, results="hide"}
 # Simulation run parameters describing different scenarios
 simPar <- read.csv(here("data", "IFCohoPars",
-                         "cohoSimPar.v2.csv"),
+                         "cohoSimPar.csv"),
                        stringsAsFactors = F)
 
 # Directory where simulated data will be saved
@@ -62,7 +62,7 @@ In this example the outputs of the simulations are separately stored in ./output
 
 ```{r loadSimData, echo=TRUE, warning=FALSE}
 simDataStationary <- read.csv(here("outputs", "simData", "example",
-                         "ref_stationary_CUsrDat.csv"),
+                         "stationary_ref_CUsrDat.csv"),
                        stringsAsFactors = F)
 
 simDataStationaryCU1 <- simDataStationary %>% 
@@ -100,7 +100,7 @@ Now let see how the model does with a population that has time varying productiv
 
 # first read in simulate data for scenario with increasing productivity
 simDataIncreaseProd <- read.csv(here("outputs", "simData", "example",
-                         "ref_increaseProd_CUsrDat.csv"),
+                         "increaseProd_ref_CUsrDat.csv"),
                        stringsAsFactors = F)
 
 simDataIncreaseProdyCU1 <- simDataIncreaseProd %>% 
@@ -123,7 +123,7 @@ This is pretty decent as well. How about a scenario where only capacity (1/beta)
 
 # first read in simulate data for scenario with increaseing productivity
 simDataIncreaseCapacity <- read.csv(here("outputs", "simData", "example",
-                         "ref_increaseCapacity_CUsrDat.csv"),
+                         "increaseCapacity_ref_CUsrDat.csv"),
                        stringsAsFactors = F)
 
 simDataIncreaseCapacityCU1 <- simDataIncreaseCapacity %>% 
@@ -148,7 +148,7 @@ Lastly, how does the DLM do with a population that has time varying productivity
 
 # first read in simulate data for scenario with increasing productivity and capacity
 simDataIncreaseProdCapacity <- read.csv(here("outputs", "simData", "example",
-                         "ref_IncreaseProd&Capacity_CUsrDat.csv"),
+                         "IncreaseProd&Capacity_ref_CUsrDat.csv"),
                        stringsAsFactors = F)
 
 simDataIncreaseProdCapacityCU1 <- simDataIncreaseProdCapacity %>% 
