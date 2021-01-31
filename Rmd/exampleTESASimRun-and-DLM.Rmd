@@ -71,7 +71,7 @@ simDataStationaryCU1 <- simDataStationary %>%
 ```
 Now we can try fitting a Dynamic Linear Model to the simulated stock-recruitment data. The model in this case is a linearized Ricker stock-recruit model with log(recruits/spawner) as the dependent variable, log(recruits/spawner) at low spawner abundance as the intercept (alpha), and a density dependence term as the slope (beta which is the inverse of capacity). To fit the model use a wrapper function we wrote for the workshop `fitDLM()` which calls functions from the `dlm`package. We can specify whether the model estimate alpha and/or beta modeled as dynamic latent states that follow a random walk with TRUE/FALSE statements in the function call. 
 
-For now we will set the model to estimate time-varying alpha `alpha_vary=TRUE` but not beta `beta_vary=TRUE`, even thought the simulated data are based on a stationary alpha and beta.
+For now we will set the model to estimate time-varying alpha `alpha_vary=TRUE` but not beta `beta_vary=FALSE`, even thought the simulated data are based on a stationary alpha and beta.
 
 ```{r fitDLM, echo=TRUE, warning=FALSE}
 # rename a couple of columns to play nice with fitDLM. 
