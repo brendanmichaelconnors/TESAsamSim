@@ -18,10 +18,10 @@ The focal unit of the simulated dynamics are conservation units (CUs) - genetica
 A summary of relevant files and how to run a simulation are provided below. Most functions contain relatively detailed documentation (and sometimes functioning examples). Details on the operating model (biological dynamics and fishery interactions) and the management procedures (harvest control rule and assessment process) will be provided in a vignette to come. The following documentation is adapted from that for the `samSim` package.
 
 
-[After installing the package development prerequisites](https://support.rstudio.com/hc/en-us/articles/200486498) install `samSim` with:
+[After installing the package development prerequisites](https://support.rstudio.com/hc/en-us/articles/200486498) You can install `TESAsamSim` with:
 
 ```{r}
-devtools::install_github("Pacific-salmon-assess/TESAsamSim")
+devtools::install_github("TESA-workshops/TESAsamSim")
 ```
 
 -----
@@ -52,7 +52,7 @@ Includes scripts necessary for several helper C++ functions.
 
 ### Running a simulation
 
-Simulations are run by installing the samSim package and using the `genericRecoverySimulator()` function. Generally this should occur in a fresh working directory (e.g. a new `.Rproj`), which will automatically generate an `outputs` directory and necessary subdirectories. Parameter values are passed to the function using a series of .csv files with the `simPar` and `cuPar` arguments being most critical. `simPar` contains parameter values that are shared among CUs and define a given scenario (e.g. species, simulation length, OM and MP characteristics). `cuPar` contains parameters that are CU-specific including at a minimum names and SR model type, but typically stock-recruit parameters as well. See *Input file details* below. Details of how to pass a suite of scenarios to the simulation model are provided in `Rmd/exampleSimRun.Rmd`.
+Simulations are run by installing the TESAsamSim package and using the `genericRecoverySimulator()` function. Generally this should occur in a fresh working directory (e.g. a new `.Rproj`), which will automatically generate an `outputs` directory and necessary subdirectories. Parameter values are passed to the function using a series of .csv files with the `simPar` and `cuPar` arguments being most critical. `simPar` contains parameter values that are shared among CUs and define a given scenario (e.g. species, simulation length, OM and MP characteristics). `cuPar` contains parameters that are CU-specific including at a minimum names and SR model type, but typically stock-recruit parameters as well. See *Input file details* below. Details of how to pass a suite of scenarios to the simulation model are provided in `Rmd/exampleSimRun.Rmd`.
 
 ------
 
