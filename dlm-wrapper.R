@@ -123,24 +123,6 @@ plotDLM <- function(dlm_model = dlm_model){
           legend.title = element_text(size = 7),
           plot.margin=unit(c(0.5,0.5,0.5,0.5), units="lines"))
 
-
-  theme(strip.text = element_text(size=6),
-        axis.title = element_text(size=9),
-        axis.text = element_text(size=6),
-
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank())
-
-
-
-
-
-
-
-
-
-
-
   # next plot true and estimate alpha
 
   b <- ggplot(data=dlm_model$results, aes(x = byr, y = alpha )) +
