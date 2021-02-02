@@ -397,7 +397,7 @@ srDat &lt;- read.csv(here(&quot;data&quot;, &quot;IFCohoPars&quot;, &quot;cohoRe
 <p>Next, simulate some stock-recruitment data based on the parameters specified in <code>cuPar</code> and the scenarios specified in <code>simPar</code> which include whether population productivity or capacity are stationary or time-varying. To do this use the <code>genericRecoverySim()</code> function. For our illustrative purposes we only need one Monte Carlo trial, but the simulator needs to run at least two, and we’ll do this separately for each scenario (row) in <code>simPar</code> which are different combinations of stable or declining productivity and capacity.</p>
 <pre class="r"><code># Simulation run parameters describing different scenarios
 simPar &lt;- read.csv(here(&quot;data&quot;, &quot;IFCohoPars&quot;,
-                         &quot;cohoSimPar.v2.csv&quot;),
+                         &quot;cohoSimPar.csv&quot;),
                        stringsAsFactors = F)
 
 # Directory where simulated data will be saved
@@ -411,13 +411,13 @@ for (i in 1:4){
             dirName=&quot;example&quot;, nTrials=2, makeSubDirs=FALSE, random=FALSE)}</code></pre>
 <p>In this example the outputs of the simulations are separately stored in ./outputs/simData/example, as a .csv for each scenario. So let’s load one of them and since the simulator generates simulated data for 5 populations (Conservation Units) and 2 Monte Carlo trials lets just grab the output from one of them.</p>
 <pre class="r"><code>simDataStationary &lt;- read.csv(here(&quot;outputs&quot;, &quot;simData&quot;, &quot;example&quot;,
-                         &quot;ref_stationary_CUsrDat.csv&quot;),
+                         &quot;stationary_ref_CUsrDat.csv&quot;),
                        stringsAsFactors = F)
 
 simDataStationaryCU1 &lt;- simDataStationary %&gt;% 
   filter(CU==1 &amp; iteration ==1)</code></pre>
 <p>Now we can try fitting a Dynamic Linear Model to the simulated stock-recruitment data. The model in this case is a linearized Ricker stock-recruit model with log(recruits/spawner) as the dependent variable, log(recruits/spawner) at low spawner abundance as the intercept (alpha), and a density dependence term as the slope (beta which is the inverse of capacity). To fit the model use a wrapper function we wrote for the workshop <code>fitDLM()</code> which calls functions from the <code>dlm</code>package. We can specify whether the model estimate alpha and/or beta modeled as dynamic latent states that follow a random walk with TRUE/FALSE statements in the function call.</p>
-<p>For now we will set the model to estimate time-varying alpha <code>alpha_vary=TRUE</code> but not beta <code>beta_vary=TRUE</code>, even thought the simulated data are based on a stationary alpha and beta.</p>
+<p>For now we will set the model to estimate time-varying alpha <code>alpha_vary=TRUE</code> but not beta <code>beta_vary=FALSE</code>, even thought the simulated data are based on a stationary alpha and beta.</p>
 <pre class="r"><code># rename a couple of columns to play nice with fitDLM. 
 colnames(simDataStationaryCU1)[c(2,4,5,8,9)] &lt;- c(&quot;byr&quot;,&quot;spwn&quot;, &quot;rec&quot;, &quot;alpha_true&quot;, &quot;beta_true&quot;)
 
@@ -433,7 +433,7 @@ dlm_model &lt;- fitDLM(data = simDataStationaryCU1,
 <p>Now let see how the model does with a population that has time varying productivity (alpha) which increases threefold over the last 30 year of the simulation.</p>
 <pre class="r"><code># first read in simulate data for scenario with increasing productivity
 simDataIncreaseProd &lt;- read.csv(here(&quot;outputs&quot;, &quot;simData&quot;, &quot;example&quot;,
-                         &quot;ref_increaseProd_CUsrDat.csv&quot;),
+                         &quot;increaseProd_ref_CUsrDat.csv&quot;),
                        stringsAsFactors = F)
 
 simDataIncreaseProdyCU1 &lt;- simDataIncreaseProd %&gt;% 
@@ -452,7 +452,7 @@ plotDLM(dlm_model)</code></pre>
 <p>This is pretty decent as well. How about a scenario where only capacity (1/beta) changes over time and where we fit a model that only estimates time varying beta?</p>
 <pre class="r"><code># first read in simulate data for scenario with increaseing productivity
 simDataIncreaseCapacity &lt;- read.csv(here(&quot;outputs&quot;, &quot;simData&quot;, &quot;example&quot;,
-                         &quot;ref_increaseCapacity_CUsrDat.csv&quot;),
+                         &quot;increaseCapacity_ref_CUsrDat.csv&quot;),
                        stringsAsFactors = F)
 
 simDataIncreaseCapacityCU1 &lt;- simDataIncreaseCapacity %&gt;% 
@@ -472,7 +472,7 @@ plotDLM(dlm_model)</code></pre>
 <p>Lastly, how does the DLM do with a population that has time varying productivity (alpha) and capacity (1/beta)?</p>
 <pre class="r"><code># first read in simulate data for scenario with increasing productivity and capacity
 simDataIncreaseProdCapacity &lt;- read.csv(here(&quot;outputs&quot;, &quot;simData&quot;, &quot;example&quot;,
-                         &quot;ref_IncreaseProd&amp;Capacity_CUsrDat.csv&quot;),
+                         &quot;IncreaseProd&amp;Capacity_ref_CUsrDat.csv&quot;),
                        stringsAsFactors = F)
 
 simDataIncreaseProdCapacityCU1 &lt;- simDataIncreaseProdCapacity %&gt;% 
