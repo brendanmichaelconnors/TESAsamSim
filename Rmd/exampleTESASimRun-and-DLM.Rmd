@@ -102,9 +102,12 @@ Now let see how the model does with a population that has time varying productiv
 ```{r plotDLM2, echo=TRUE, warning=FALSE, fig.width=8, fig.height=4}
 
 # first read in simulate data for scenario with increasing productivity
-simDataIncreaseProd <- read.csv(here("outputs", "simData", "example",
-                         "increaseProd_ref_CUsrDat.csv"),
-                       stringsAsFactors = F)
+# simDataIncreaseProd <- read.csv(here("outputs", "simData", "example",
+#                          "increaseProd_ref_CUsrDat.csv"),
+#                        stringsAsFactors = F)
+
+simDataIncreaseProd <- readRDS(here("outputs", "simData", "example",
+                         "increaseProd_ref_CUsrDat.RData"))$srDatout
 
 simDataIncreaseProdyCU1 <- simDataIncreaseProd %>% 
   filter(CU==1 & iteration ==1)
@@ -125,9 +128,12 @@ This is pretty decent as well. How about a scenario where only capacity (1/beta)
 ```{r plotDLM3, echo=TRUE, warning=FALSE, fig.width=8, fig.height=4}
 
 # first read in simulate data for scenario with increaseing productivity
-simDataIncreaseCapacity <- read.csv(here("outputs", "simData", "example",
-                         "increaseCapacity_ref_CUsrDat.csv"),
-                       stringsAsFactors = F)
+# simDataIncreaseCapacity <- read.csv(here("outputs", "simData", "example",
+#                          "increaseCapacity_ref_CUsrDat.csv"),
+#                        stringsAsFactors = F)
+
+simDataIncreaseCapacity <- readRDS(here("outputs", "simData", "example",
+                         "increaseCapacity_ref_CUsrDat.RData"))$srDatout
 
 simDataIncreaseCapacityCU1 <- simDataIncreaseCapacity %>% 
   filter(CU==1 & iteration ==1)
@@ -150,9 +156,12 @@ Lastly, how does the DLM do with a population that has time varying productivity
 ```{r plotDLM4, echo=TRUE, warning=FALSE, fig.width=8, fig.height=4}
 
 # first read in simulate data for scenario with increasing productivity and capacity
-simDataIncreaseProdCapacity <- read.csv(here("outputs", "simData", "example",
-                         "IncreaseProd&Capacity_ref_CUsrDat.csv"),
-                       stringsAsFactors = F)
+# simDataIncreaseProdCapacity <- read.csv(here("outputs", "simData", "example",
+#                          "IncreaseProd&Capacity_ref_CUsrDat.csv"),
+#                        stringsAsFactors = F)
+
+simDataIncreaseProdCapacity <- readRDS(here("outputs", "simData", "example",
+                         "increaseProd&Capacity_ref_CUsrDat.RData"))$srDatout
 
 simDataIncreaseProdCapacityCU1 <- simDataIncreaseProdCapacity %>% 
   filter(CU==1 & iteration ==1)
