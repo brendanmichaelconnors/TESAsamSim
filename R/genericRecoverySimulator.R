@@ -70,7 +70,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   ppnMix <- simPar$propMixHigh #ppn of Canadian harvest allocated to mixed stock fisheries when abundance is high (default)
   singleHCR <- ifelse(is.null(simPar$singleHCR), FALSE, simPar$singleHCR) #if TRUE single stock TAC is only harvested when BMs met
   moveTAC <- ifelse(is.null(simPar$moveTAC), FALSE, simPar$moveTAC) #if TRUE single stock TAC for low abundance CUs is re-allocated
-  rho <- simPar$rho #autocorrelation coefficient in recruitment residuals
+  rho <- cuPar$rho #autocorrelation coefficient in recruitment residuals
   correlCU <- simPar$correlCU #correlation among CUs in recruitment deviations
   adjSig <- simPar$adjustSig # used to scale CU specific sigma up or down
   tauCatch <- simPar$tauCatch # CU-specific catch assignment error for observation model
@@ -1635,7 +1635,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
         if (S[y, k] > 0) {
           if (model[k] == "ricker") {
             dum <- rickerModel(S[y, k], alphaMat[y, k], betaMat[y,k],
-                               error = errorCU[y, k], rho = rho,
+                               error = errorCU[y, k], rho = rho[k],
                                prevErr = laggedError[y - 1, k])
             laggedError[y, k] <- dum[[2]]
             #keep recruitment below CU-specific cap
