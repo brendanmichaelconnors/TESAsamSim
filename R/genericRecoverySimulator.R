@@ -70,7 +70,6 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   ppnMix <- simPar$propMixHigh #ppn of Canadian harvest allocated to mixed stock fisheries when abundance is high (default)
   singleHCR <- ifelse(is.null(simPar$singleHCR), FALSE, simPar$singleHCR) #if TRUE single stock TAC is only harvested when BMs met
   moveTAC <- ifelse(is.null(simPar$moveTAC), FALSE, simPar$moveTAC) #if TRUE single stock TAC for low abundance CUs is re-allocated
-  rho <- cuPar$rho #autocorrelation coefficient in recruitment residuals
   correlCU <- simPar$correlCU #correlation among CUs in recruitment deviations
   adjSig <- simPar$adjustSig # used to scale CU specific sigma up or down
   tauCatch <- simPar$tauCatch # CU-specific catch assignment error for observation model
@@ -154,6 +153,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   ricA <- cuPar$alpha
   ricB <- cuPar$beta0
   ricSig <- cuPar$sigma
+  rho <- cuPar$rho # autocorrelation coefficient in recruitment residuals
   larA <- cuPar$larkAlpha
   larB <- cuPar$larkBeta0
   larB1 <- cuPar$larkBeta1
@@ -2152,11 +2152,22 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
 
   }
 
-  fileName <- ifelse(variableCU == "TRUE", paste(cuNameOM, cuNameMP, "CUsrDat.csv", sep = "_"),
-                     paste(nameOM, nameMP, "CUsrDat.csv", sep = "_"))
+  # fileName <- ifelse(variableCU == "TRUE", paste(cuNameOM, cuNameMP, "CUsrDat.csv", sep = "_"),
+  #                    paste(nameOM, nameMP, "CUsrDat.csv", sep = "_"))
+  #
+  # write.csv(srDatout, file = paste(here("outputs/simData"), dirPath, fileName, sep = "/"),
+  #           row.names = FALSE)
 
-  write.csv(srDatout, file = paste(here("outputs/simData"), dirPath, fileName, sep = "/"),
-            row.names = FALSE)
 
+  srDatoutList <- list(srDatout, nameOM, simYears, nTrials, ricSig, rho, canER, obsSig,
+                       obsMixCatchSig, prod, prodScalars, cap, capacityScalars, trendLength)
+  names(srDatoutList) <- c("srDatout", "nameOM", "simYears", "nTrials", "ricSig", "rho",
+                                "canER", "obsSig", "obsMixCatchSig", "prod", "prodScalars",
+                                "cap", "capacityScalars", "trendLength")
+  fileName <- ifelse(variableCU == "TRUE", paste(cuNameOM, cuNameMP, "CUsrDat.RData", sep = "_"),
+                     paste(nameOM, nameMP, "CUsrDat.RData", sep = "_"))
+
+  saveRDS(srDatoutList, file = paste(here("outputs/simData"), dirPath, fileName,
+                                  sep = "/"), version=3)
 
   } # end of genericRecoverySim()
