@@ -26,12 +26,11 @@ lapply(listOfPackages, require, character.only = TRUE)
 source(here("dlm-wrapper.R"))
 
 ## Load relevant input data
-
 # CU-specific parameters
 cuPar <- read.csv(here("data", "IFCohoPars", "cohoCUpars.csv"),
                   stringsAsFactors=F)
-# Stock-recruit and catch data that are used to populate the simulation priming
-# period
+
+# Stock-recruit and catch data that are used to populate the simulation priming/conditioning period
 srDat <- read.csv(here("data", "IFCohoPars", "cohoRecDatTrim.csv"),
                   stringsAsFactors=F)
 
