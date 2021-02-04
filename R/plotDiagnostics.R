@@ -72,9 +72,9 @@ plotDiagCU <- function(varArray, varNames, stkName = NULL, model, ricB,
                larBList$lag3[p])
   }
   #index value for last year w/ SR estimate
-  lastNonNA <- max(which(!is.na(varArray[ , p, "Est Productivity"])))
-  modelA <- varArray[lastNonNA, p, "Est Productivity"]
-  modelB <- varArray[lastNonNA, p, "Est Beta"]
+  # lastNonNA <- max(which(!is.na(varArray[ , p, "Est Productivity"])))
+  # modelA <- varArray[lastNonNA, p, "Est Productivity"]
+  # modelB <- varArray[lastNonNA, p, "Est Beta"]
 
   par(mfrow = c(3, 2), mar = c(3.5, 4, 0.5, 0.5), oma = c(0, 0, 0, 0),
       cex.lab = 1)
@@ -135,12 +135,12 @@ plotDiagCU <- function(varArray, varNames, stkName = NULL, model, ricB,
   }
   points(varArray[, p, "Obs Recruits BY"] ~ varArray[, p, "Obs Spawners"],
          bg = scales::alpha("white", 0.4), pch = 21)
-  curve(x * exp(modelA - modelB * x), from = 0, #estimated curve
-        to = max(varArray[ , p, "Obs Spawners"], na.rm = TRUE),
-        add = TRUE, lwd = 2, lty = 2)
-  legend("topright", legend = c("True", "Obs"), lty = c(1, 2), pch = c(21, 21),
-         bg = "white", pt.bg = c(scales::alpha("black", 0.4), "white"),
-         cex = 1.1, lwd = 1.25)
+  # curve(x * exp(modelA - modelB * x), from = 0, #estimated curve
+  #       to = max(varArray[ , p, "Obs Spawners"], na.rm = TRUE),
+  #       add = TRUE, lwd = 2, lty = 2)
+  # legend("topright", legend = c("True", "Obs"), lty = c(1, 2), pch = c(21, 21),
+  #        bg = "white", pt.bg = c(scales::alpha("black", 0.4), "white"),
+  #        cex = 1.1, lwd = 1.25)
   text(0.1*max(c(varArray[ , p, "Spawners"], varArray[ , p, "Obs Spawners"]),
                na.rm = TRUE),
        0.95*max(c(varArray[ , p, "Recruits BY"],

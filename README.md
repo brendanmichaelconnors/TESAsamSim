@@ -82,7 +82,6 @@ Simulations are run by installing the TESAsamSim package and using the `genericR
   - `trendLength` - indicates the number of years over which there is a trend (if `prodRegime == "decline"` or `"increase"`, or `capRegime == "decline"` or `"increase"`).
   - `capRegime` - capacity regime (`med`, `linear`, `decline`, `increase`). The regime `med` represents a stable value based on the median value. The regime `linear`represents a linear change in capacity over the length of the trend period followed by stable values, where the propotional change over the length of the trend is specified by `capPpnChange`. The regimes `decline` and `increase` represent declines to 65% and increases to 135% of current capacity estimates over the length of the trend, followed by stable levels.
   - `capPpnChange` - the proportional change in capacity over the trend period when the `capRegime` is linear.
-  - `rho` - temporal autocorrelation coefficient in recruitment deviations
   - `arSigTransform` - if `TRUE` estimates of sigma from input are transformed so that they account for temporal autocorrelation
   - `correlCU` - the correlation among CUs in recruitment deviations
   - `corrMat` - if `TRUE` a custom correlation matrix is required to be passed as an input and is used to specify the covariance matrix for recruitment deviations
@@ -114,6 +113,7 @@ Mandatory contents include:
   - `alpha` - productivity parameter for Ricker models
   - `beta0` - density-dependence parameter for Ricker models
   - `sigma` - recruitment variation for Ricker models
+  - `rho` - temporal autocorrelation coefficient in recruitment deviations
   - `meanRec2` - mean proportion of age-2 recruits
   - `meanRec3` - mean proportion of age-3 recruits
   - `meanRec4` - mean proportion of age-4 recruits

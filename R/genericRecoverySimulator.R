@@ -70,7 +70,6 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   ppnMix <- simPar$propMixHigh #ppn of Canadian harvest allocated to mixed stock fisheries when abundance is high (default)
   singleHCR <- ifelse(is.null(simPar$singleHCR), FALSE, simPar$singleHCR) #if TRUE single stock TAC is only harvested when BMs met
   moveTAC <- ifelse(is.null(simPar$moveTAC), FALSE, simPar$moveTAC) #if TRUE single stock TAC for low abundance CUs is re-allocated
-  rho <- simPar$rho #autocorrelation coefficient in recruitment residuals
   correlCU <- simPar$correlCU #correlation among CUs in recruitment deviations
   adjSig <- simPar$adjustSig # used to scale CU specific sigma up or down
   tauCatch <- simPar$tauCatch # CU-specific catch assignment error for observation model
@@ -154,6 +153,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   ricA <- cuPar$alpha
   ricB <- cuPar$beta0
   ricSig <- cuPar$sigma
+  rho <- cuPar$rho # autocorrelation coefficient in recruitment residuals
   larA <- cuPar$larkAlpha
   larB <- cuPar$larkBeta0
   larB1 <- cuPar$larkBeta1
@@ -1016,81 +1016,86 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
         betaMat[y, ] <- 1/capMat[y,]#betaMat[y - 1, ]
       } #end if y > (nPrime + 1)
 
-      #Estimate BMs if normative period not being used, otherwise assume they are equal to last year of observation
-      for (k in 1:nCU) {
-        if (model[k] == "ricker") {
-          if (normPeriod == TRUE) {
-            sMSY[y, k, n] <- sMSY[nPrime, k, n]
-            sGen[y, k, n] <- sGen[nPrime, k, n]
-          } else if (normPeriod == FALSE) {
-            sEqVar[y, k, n] <- refAlpha[k] / beta[k]
-            sMSY[y, k, n] <- (1 - gsl::lambert_W0(exp(1 - refAlpha[k]))) / beta[k]
-            sGen[y, k, n] <- as.numeric(sGenSolver(
-              theta = c(refAlpha[k], refAlpha[k] / sEqVar[y, k, n], ricSig[k]),
-              sMSY = sMSY[y, k, n]
-            ))
-          }
-        } #end if model == ricker
-        if (model[k] == "rickerSurv") {
-          if (normPeriod == TRUE) {
-            sMSY[y, k, n] <- sMSY[nPrime, k, n]
-            sGen[y, k, n] <- sGen[nPrime, k, n]
-          } else if (normPeriod == FALSE) {
-            refAlpha_prime<- refAlpha[k] + (gamma[k]*log(coVarInit[k]))
-            sEqVar[y, k, n] <- refAlpha_prime / beta[k]
-            sMSY[y, k, n] <- (1 - gsl::lambert_W0(exp(1 - refAlpha_prime))) / beta[k]
-            sGen[y, k, n] <- as.numeric(sGenSolver(
-              theta = c(refAlpha_prime, refAlpha_prime / sEqVar[y, k, n], ricSig[k]),
-              sMSY = sMSY[y, k, n]
-            ))
-          }
-        } #end if model == rickerSurv
-        if (model[k] == "larkin") {
-          if (normPeriod == TRUE) {
-            #calculate last observed year on same cycle line as current so that
-            #4 different normative BMs are used for Larkin stocks
-            larkinBMYear <- max(seq(cycle[y], nPrime, 4))
-            sMSY[y, k, n] <- sMSY[larkinBMYear, k, n]
-            sGen[y, k, n] <- sGen[larkinBMYear, k, n]
-          } else if (normPeriod == FALSE) {
-            #modified alpha used to estimate Larkin BMs
-            alphaPrimeMat[y, k] <- refAlpha[k] - (larB1[k] * S[y - 1, k]) -
-              (larB2[k] * S[y-2, k]) - (larB3[k] * S[y - 3, k])
-            sEqVar[y, k, n] <- ifelse(alphaPrimeMat[y, k] > 0,
-                                      alphaPrimeMat[y, k] / beta[k],
-                                      NA)
-            cycleSMSY[y, k] <- ifelse(alphaPrimeMat[y, k] > 0,
-                                      (1 - gsl::lambert_W0(exp(
-                                        1 - alphaPrimeMat[y, k]))) / beta[k],
-                                      NA)
-            cycleSGen[y, k] <- ifelse(alphaPrimeMat[y, k] > 0,
-                                      as.numeric(sGenSolver(
-                                        theta = c(alphaPrimeMat[y, k],
-                                                  alphaPrimeMat[y, k] /
-                                                    sEqVar[y, k, n],
-                                                  larSig[k]),
-                                        sMSY = cycleSMSY[y, k])),
-                                      NA)
-            #calculate annual benchmarks as medians within cycle line
-            sMSY[y, k, n] <- median(cycleSMSY[seq(cycle[y], y, 4), k],
-                                    na.rm = TRUE)
-            sGen[y, k, n] <- median(cycleSGen[seq(cycle[y], y, 4), k],
-                                    na.rm = TRUE)
-          } #end if normPeriod == FALSE
-        }#end if model == Larkin
+      # Estimate true benchmarks? (not needed for dynamic linear model simulations)
+      trueBenchmarks <- FALSE
+      if(trueBenchmarks){
+        #Estimate BMs if normative period not being used, otherwise assume they are equal to last year of observation
+        for (k in 1:nCU) {
+          if (model[k] == "ricker") {
+            if (normPeriod == TRUE) {
+              sMSY[y, k, n] <- sMSY[nPrime, k, n]
+              sGen[y, k, n] <- sGen[nPrime, k, n]
+            } else if (normPeriod == FALSE) {
+              sEqVar[y, k, n] <- refAlpha[k] / beta[k]
+              sMSY[y, k, n] <- (1 - gsl::lambert_W0(exp(1 - refAlpha[k]))) / beta[k]
+              sGen[y, k, n] <- as.numeric(sGenSolver(
+                theta = c(refAlpha[k], refAlpha[k] / sEqVar[y, k, n], ricSig[k]),
+                sMSY = sMSY[y, k, n]
+              ))
+            }
+          } #end if model == ricker
+          if (model[k] == "rickerSurv") {
+            if (normPeriod == TRUE) {
+              sMSY[y, k, n] <- sMSY[nPrime, k, n]
+              sGen[y, k, n] <- sGen[nPrime, k, n]
+            } else if (normPeriod == FALSE) {
+              refAlpha_prime<- refAlpha[k] + (gamma[k]*log(coVarInit[k]))
+              sEqVar[y, k, n] <- refAlpha_prime / beta[k]
+              sMSY[y, k, n] <- (1 - gsl::lambert_W0(exp(1 - refAlpha_prime))) / beta[k]
+              sGen[y, k, n] <- as.numeric(sGenSolver(
+                theta = c(refAlpha_prime, refAlpha_prime / sEqVar[y, k, n], ricSig[k]),
+                sMSY = sMSY[y, k, n]
+              ))
+            }
+          } #end if model == rickerSurv
+          if (model[k] == "larkin") {
+            if (normPeriod == TRUE) {
+              #calculate last observed year on same cycle line as current so that
+              #4 different normative BMs are used for Larkin stocks
+              larkinBMYear <- max(seq(cycle[y], nPrime, 4))
+              sMSY[y, k, n] <- sMSY[larkinBMYear, k, n]
+              sGen[y, k, n] <- sGen[larkinBMYear, k, n]
+            } else if (normPeriod == FALSE) {
+              #modified alpha used to estimate Larkin BMs
+              alphaPrimeMat[y, k] <- refAlpha[k] - (larB1[k] * S[y - 1, k]) -
+                (larB2[k] * S[y-2, k]) - (larB3[k] * S[y - 3, k])
+              sEqVar[y, k, n] <- ifelse(alphaPrimeMat[y, k] > 0,
+                                        alphaPrimeMat[y, k] / beta[k],
+                                        NA)
+              cycleSMSY[y, k] <- ifelse(alphaPrimeMat[y, k] > 0,
+                                        (1 - gsl::lambert_W0(exp(
+                                          1 - alphaPrimeMat[y, k]))) / beta[k],
+                                        NA)
+              cycleSGen[y, k] <- ifelse(alphaPrimeMat[y, k] > 0,
+                                        as.numeric(sGenSolver(
+                                          theta = c(alphaPrimeMat[y, k],
+                                                    alphaPrimeMat[y, k] /
+                                                      sEqVar[y, k, n],
+                                                    larSig[k]),
+                                          sMSY = cycleSMSY[y, k])),
+                                        NA)
+              #calculate annual benchmarks as medians within cycle line
+              sMSY[y, k, n] <- median(cycleSMSY[seq(cycle[y], y, 4), k],
+                                      na.rm = TRUE)
+              sGen[y, k, n] <- median(cycleSGen[seq(cycle[y], y, 4), k],
+                                      na.rm = TRUE)
+            } #end if normPeriod == FALSE
+          }#end if model == Larkin
 
-        if (is.na(sGen[y, k, n] & sMSY[y, k, n]) == FALSE) {
-          if (sGen[y, k, n] > sMSY[y, k, n]) {
-            warning("True lower benchmark greater than upper benchmark;
+          if (is.na(sGen[y, k, n] & sMSY[y, k, n]) == FALSE) {
+            if (sGen[y, k, n] > sMSY[y, k, n]) {
+              warning("True lower benchmark greater than upper benchmark;
                     set to NA")
-            sMSY[y, k, n] <- NA
-            sGen[y, k, n] <- NA
+              sMSY[y, k, n] <- NA
+              sGen[y, k, n] <- NA
+            }
+          } else {
+            warning("Neither benchmark could be estimated")
           }
-        } else {
-          warning("Neither benchmark could be estimated")
-        }
 
-      } #end for k in 1:nCU
+        } #end for k in 1:nCU
+
+      }# End of if(trueBenchmarks)
 
       # Calculate recruitment by return year
       recRY2[y, ] <- recBY[y - 2, ] * ppnAges[y - 2, , 1]
@@ -1513,83 +1518,86 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
 
       #___________________________________________________________________
       ### Assessment submodel
-
-      #Build SRR (even with normative period useful for diagnostics)
-      for (k in 1:nCU) {
-        srMod <- quickLm(xVec = obsS[, k], yVec = obsLogRS[, k])
-        estYi[y, k, n] <- srMod[[1]]
-        estSlope[y, k, n] <- srMod[[2]]
-        estRicB[y, k, n] <- ifelse(extinct[y, k] == 1, NA, -estSlope[y, k, n])
-        estRicA[y, k, n] <- ifelse(extinct[y, k] == 1, NA, estYi[y, k, n])
-      }
-      #Benchmark estimates
-      # -- If normative period is TRUE than do not estimate BMs (they will diverge
-      # from true BMs for reasons other than obs error)
-      if (normPeriod == TRUE) {
-        s25th[y, , n] <- s25th[nPrime, , n]
-        s50th[y, , n] <- s50th[nPrime, , n]
-        estS25th[y, , n] <- s25th[nPrime, , n]
-        estS50th[y, , n] <- s50th[nPrime, , n]
-        estSGen[y, , n] <- sGen[y, , n]
-        estSMSY[y, , n] <- sMSY[y, , n]
-      } else if (normPeriod == FALSE) {
-
-        if (model[k] == "larkin" | model[k]=="rickerSurv") {
-          warning("Normative period is TRUE for Larkin or RickerSurv. Assessment model will not equal true OM for this case. Default assessment model is Ricker")
-        }
-
+      estBenchmarks <- FALSE
+      if(estBenchmarks){
+        #Build SRR (even with normative period useful for diagnostics)
         for (k in 1:nCU) {
-          #Calculate true percentile BMs
-          temp <- S[1:y, k]
-          sNoNA <- temp[!is.na(temp)]
-          n25th <- round(length(sNoNA) * 0.25, 0)
-          n50th <- round(length(sNoNA) * 0.50, 0)
-          s25th[y, k, n] <- sort(sNoNA)[n25th]
-          s50th[y, k, n] <- sort(sNoNA)[n50th]
-          #Calculate observed percentile BMs
-          temp <- obsS[1:y, k]
-          obsSNoNA <- temp[!is.na(temp)]
-          obsN25th <- round(length(obsSNoNA) * 0.25, 0)
-          obsN50th <- round(length(obsSNoNA) * 0.50, 0)
-          estS25th[y, k, n] <- sort(obsSNoNA)[obsN25th]
-          estS50th[y, k, n] <- sort(obsSNoNA)[obsN50th]
-          #Calculate SR BMs
-          estSMSY[y, k, n] <- ifelse(extinct[y, k] == 1, NA,
-                                     (1 - gsl::lambert_W0(exp(
-                                       1 - estRicA[y, k, n]))) /
-                                       estRicB[y, k, n])
-          if (is.na(estRicB[y, k, n]) == FALSE) {
-            if (estRicB[y, k, n] > 0) {
-              if ((1 / estRicB[y, k, n]) <= max(obsS[,k], na.rm = TRUE) * 4) {
-                estSGen[y, k, n] <- as.numeric(sGenSolver(
-                  theta = c(estRicA[y, k, n], estRicB[y, k, n], ricSig[k]),
-                  sMSY = estSMSY[y, k, n]))
-              } else {
-                #if a BM cannot be estimated set it to the last estimated value
-                estSGen[y, k, n] <- estSGen[max(which(!is.na(
-                  estSGen[, k, n]))), k, n]
-                estSMSY[y, k, n] <- estSMSY[max(which(!is.na(
-                  estSMSY[, k, n]))), k, n]
-                fb1[y, k] <- 1
-              }
-            }# End of if(estRicB[y, n]>0)
-          } else{
-            estSGen[y, k, n] <- estSGen[max(which(!is.na(estSGen[, k, n]))), k, n]
-            estSMSY[y, k, n] <- estSMSY[max(which(!is.na(estSMSY[, k, n]))), k, n]
-            fb2[y, k] <- 1
-          } #end(if(is.na(estRicB)))
-        } #end for(k in 1:nCU)
-        if (is.na(estSGen[y, k, n]) == FALSE & is.na(estSMSY[y, k, n]) == FALSE) {
-          if (estSGen[y, k, n] > estSMSY[y, k, n]) {
-            warning("Estimated lower benchmark greater than upper benchmark;
-                    set to NA")
-            estSGen[y, k, n] <- estSGen[max(which(!is.na(estSGen[, k, n]))), k, n]
-            estSMSY[y, k, n] <- estSMSY[max(which(!is.na(estSMSY[, k, n]))), k, n]
-            fb3[y, k] <- 1
-          }
+          srMod <- quickLm(xVec = obsS[, k], yVec = obsLogRS[, k])
+          estYi[y, k, n] <- srMod[[1]]
+          estSlope[y, k, n] <- srMod[[2]]
+          estRicB[y, k, n] <- ifelse(extinct[y, k] == 1, NA, -estSlope[y, k, n])
+          estRicA[y, k, n] <- ifelse(extinct[y, k] == 1, NA, estYi[y, k, n])
         }
-      } #end if normPeriod = FALSE
+        #Benchmark estimates
+        # -- If normative period is TRUE than do not estimate BMs (they will diverge
+        # from true BMs for reasons other than obs error)
+        if (normPeriod == TRUE) {
+          s25th[y, , n] <- s25th[nPrime, , n]
+          s50th[y, , n] <- s50th[nPrime, , n]
+          estS25th[y, , n] <- s25th[nPrime, , n]
+          estS50th[y, , n] <- s50th[nPrime, , n]
+          estSGen[y, , n] <- sGen[y, , n]
+          estSMSY[y, , n] <- sMSY[y, , n]
+        } else if (normPeriod == FALSE) {
 
+          if (model[k] == "larkin" | model[k]=="rickerSurv") {
+            warning("Normative period is TRUE for Larkin or RickerSurv. Assessment model will not equal true OM for this case. Default assessment model is Ricker")
+          }
+
+          for (k in 1:nCU) {
+            #Calculate true percentile BMs
+            temp <- S[1:y, k]
+            sNoNA <- temp[!is.na(temp)]
+            n25th <- round(length(sNoNA) * 0.25, 0)
+            n50th <- round(length(sNoNA) * 0.50, 0)
+            s25th[y, k, n] <- sort(sNoNA)[n25th]
+            s50th[y, k, n] <- sort(sNoNA)[n50th]
+            #Calculate observed percentile BMs
+            temp <- obsS[1:y, k]
+            obsSNoNA <- temp[!is.na(temp)]
+            obsN25th <- round(length(obsSNoNA) * 0.25, 0)
+            obsN50th <- round(length(obsSNoNA) * 0.50, 0)
+            estS25th[y, k, n] <- sort(obsSNoNA)[obsN25th]
+            estS50th[y, k, n] <- sort(obsSNoNA)[obsN50th]
+            #Calculate SR BMs
+            estSMSY[y, k, n] <- ifelse(extinct[y, k] == 1, NA,
+                                       (1 - gsl::lambert_W0(exp(
+                                         1 - estRicA[y, k, n]))) /
+                                         estRicB[y, k, n])
+            if (is.na(estRicB[y, k, n]) == FALSE) {
+              if (estRicB[y, k, n] > 0) {
+                if ((1 / estRicB[y, k, n]) <= max(obsS[,k], na.rm = TRUE) * 4) {
+                  estSGen[y, k, n] <- as.numeric(sGenSolver(
+                    theta = c(estRicA[y, k, n], estRicB[y, k, n], ricSig[k]),
+                    sMSY = estSMSY[y, k, n]))
+                } else {
+                  #if a BM cannot be estimated set it to the last estimated value
+                  estSGen[y, k, n] <- estSGen[max(which(!is.na(
+                    estSGen[, k, n]))), k, n]
+                  estSMSY[y, k, n] <- estSMSY[max(which(!is.na(
+                    estSMSY[, k, n]))), k, n]
+                  fb1[y, k] <- 1
+                }
+              }# End of if(estRicB[y, n]>0)
+            } else{
+              estSGen[y, k, n] <- estSGen[max(which(!is.na(estSGen[, k, n]))), k, n]
+              estSMSY[y, k, n] <- estSMSY[max(which(!is.na(estSMSY[, k, n]))), k, n]
+              fb2[y, k] <- 1
+            } #end(if(is.na(estRicB)))
+          } #end for(k in 1:nCU)
+          if (is.na(estSGen[y, k, n]) == FALSE & is.na(estSMSY[y, k, n]) == FALSE) {
+            if (estSGen[y, k, n] > estSMSY[y, k, n]) {
+              warning("Estimated lower benchmark greater than upper benchmark;
+                      set to NA")
+              estSGen[y, k, n] <- estSGen[max(which(!is.na(estSGen[, k, n]))), k, n]
+              estSMSY[y, k, n] <- estSMSY[max(which(!is.na(estSMSY[, k, n]))), k, n]
+              fb3[y, k] <- 1
+            }
+          }
+        } #end if normPeriod = FALSE
+
+
+      }# End of if(estBenchmarks)
 
       #___________________________________________________________________
       ### Population dynamics submodel
@@ -1635,7 +1643,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
         if (S[y, k] > 0) {
           if (model[k] == "ricker") {
             dum <- rickerModel(S[y, k], alphaMat[y, k], betaMat[y,k],
-                               error = errorCU[y, k], rho = rho,
+                               error = errorCU[y, k], rho = rho[k],
                                prevErr = laggedError[y - 1, k])
             laggedError[y, k] <- dum[[2]]
             #keep recruitment below CU-specific cap
@@ -1680,45 +1688,49 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
 
       recBYAg[y, n] <- sum(recBY[y, ])
 
-      for (k in 1:nCU) {
-        if (model[k] == "ricker" | model[k] == "rickerSurv"  |
-            model[k] == "larkin" & cycle[y] == domCycle[k]) {
-          if (bm == "stockRecruit") {
-            #is spawner abundance greater than upper/lower BM
-            upperBM[y, k] <- 0.8 * sMSY[y, k, n]
-            lowerBM[y, k] <- sGen[y, k, n]
-            upperObsBM[y, k] <- 0.8 * estSMSY[y, k, n]
-            lowerObsBM[y, k] <- estSGen[y, k, n]
+      estStatus <- FALSE
+      if(estStatus){
+        for (k in 1:nCU) {
+          if (model[k] == "ricker" | model[k] == "rickerSurv"  |
+              model[k] == "larkin" & cycle[y] == domCycle[k]) {
+            if (bm == "stockRecruit") {
+              #is spawner abundance greater than upper/lower BM
+              upperBM[y, k] <- 0.8 * sMSY[y, k, n]
+              lowerBM[y, k] <- sGen[y, k, n]
+              upperObsBM[y, k] <- 0.8 * estSMSY[y, k, n]
+              lowerObsBM[y, k] <- estSGen[y, k, n]
+            }
+            if (bm == "percentile") {
+              upperBM[y, k] <- s50th[y, k, n]
+              lowerBM[y, k] <- s25th[y, k, n]
+              upperObsBM[y, k] <- estS50th[y, k, n]
+              lowerObsBM[y, k] <- estS25th[y, k, n]
+            }
           }
-          if (bm == "percentile") {
-            upperBM[y, k] <- s50th[y, k, n]
-            lowerBM[y, k] <- s25th[y, k, n]
-            upperObsBM[y, k] <- estS50th[y, k, n]
-            lowerObsBM[y, k] <- estS25th[y, k, n]
+          #only save status for Larkin stocks on dom cycle otherwise use prev status
+          if (model[k] == "larkin" & cycle[y] != domCycle[k]) {
+            upperBM[y, k] <- upperBM[y - 1, k]
+            lowerBM[y, k] <- lowerBM[y - 1, k]
+            upperObsBM[y, k] <- upperObsBM[y - 1, k]
+            lowerObsBM[y, k] <- lowerObsBM[y - 1, k]
           }
-        }
-        #only save status for Larkin stocks on dom cycle otherwise use prev status
-        if (model[k] == "larkin" & cycle[y] != domCycle[k]) {
-          upperBM[y, k] <- upperBM[y - 1, k]
-          lowerBM[y, k] <- lowerBM[y - 1, k]
-          upperObsBM[y, k] <- upperObsBM[y - 1, k]
-          lowerObsBM[y, k] <- lowerObsBM[y - 1, k]
-        }
-        if (!is.na(upperBM[y, k]) & S[y, k] > upperBM[y, k]) {
-          counterUpperBM[y, k] <- 1 #is spawner abundance greater than upper BM
-        }
+          if (!is.na(upperBM[y, k]) & S[y, k] > upperBM[y, k]) {
+            counterUpperBM[y, k] <- 1 #is spawner abundance greater than upper BM
+          }
 
-        if (!is.na(lowerBM[y, k]) & S[y, k] > lowerBM[y, k]) {
-          counterLowerBM[y, k] <- 1 #is spawner abundance greater than lower BM
-        }
-        if (!is.na(upperObsBM[y, k]) & obsS[y, k] > upperObsBM[y, k]) {
-          counterUpperObsBM[y, k] <- 1 #is spawner abundance greater than upper BM
-        }
-        if (!is.na(lowerObsBM[y, k]) & obsS[y, k] > lowerObsBM[y, k]) {
-          counterLowerObsBM[y, k] <- 1 #is spawner abundance greater than lower BM
-        }
+          if (!is.na(lowerBM[y, k]) & S[y, k] > lowerBM[y, k]) {
+            counterLowerBM[y, k] <- 1 #is spawner abundance greater than lower BM
+          }
+          if (!is.na(upperObsBM[y, k]) & obsS[y, k] > upperObsBM[y, k]) {
+            counterUpperObsBM[y, k] <- 1 #is spawner abundance greater than upper BM
+          }
+          if (!is.na(lowerObsBM[y, k]) & obsS[y, k] > lowerObsBM[y, k]) {
+            counterLowerObsBM[y, k] <- 1 #is spawner abundance greater than lower BM
+          }
 
-      } # end of k loop over CUs
+        } # end of k loop over CUs
+
+      }# end of if(estStatus)
 
       } # end of loop 3
 
@@ -1787,75 +1799,77 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
     #_____________________________________________________________________
     ## Summary calculations with full datasets
     # Aggregate BM status
-    for (k in 1:nCU) {
-      #did a CU recover early, i.e. above BM year of 4th generation
-      if(sum(counterUpperBM[earlyPeriod, k]) == gen) {
-        counterEarlyUpperBM[n, k] <- 1
-      }
-      if(sum(counterLowerBM[earlyPeriod, k]) == gen) {
-        counterEarlyLowerBM[n, k] <- 1
-      }
-      #has a CU "recovered", i.e. above BM every year of last generation
-      if(sum(counterUpperBM[(nYears - gen + 1):nYears, k]) == gen) {
-        counterLateUpperBM[n, k] <- 1
-      }
-      if(sum(counterLowerBM[(nYears - gen + 1):nYears, k]) == gen) {
-        counterLateLowerBM[n, k] <- 1
-      }
-      if(sum(counterUpperObsBM[(nYears - gen + 1):nYears, k]) == gen) {
-        counterLateUpperObsBM[n, k] <- 1
-      }
-      if(sum(counterLowerObsBM[(nYears - gen + 1):nYears, k]) == gen) {
-        counterLateLowerObsBM[n, k] <- 1
-      }
-    }
 
-
-    # Calculate CU-specific trends across geometric means
-    ## NOTE: even with quickLm these functions are a big bottleneck
-    ## Make an optional output PM (rather than default) based on simPar
-    if (!is.null(simPar$statusTrendPM)) {
-      if (simPar$statusTrendPM == TRUE) {
-        for (k in 1:nCU) {
-          S[, k] <- ifelse(S[, k] == 0, 0.00005, S[, k])
-          #ask C Holt how this is generated, right now running blind
-          nYrsGeoMean <- nYears - nPrime
-          #generate geo mean spwnr abundance w.out NAs
-          strtGMean <- nPrime - gen
-          sGeoMean[strtGMean:nYears, k] <- genMean(S[strtGMean:nYears, k], gen)
-          lnSGeoMean <- log(sGeoMean)
-          ppnSLow[n, k] <- length(which(sGeoMean[, k] < 0.1)) / nYrsGeoMean
-          sl <- NA
-          ppnChange <- rep(NA, nYears)
-          # calculate slope over 12 year period i.e.,from year j-11 to j
-          for (j in (nPrime + (3 * gen - 1)):nYears) {
-            if (extinct[j, k] == 0) { #only calculate slopes when non-extinct
-              if (is.na(lnSGeoMean[j - (3 * gen - 1), k]) == "FALSE") {
-                sl[j] <- quickLm(xVec = c(1:(3 * gen)),
-                                 yVec = lnSGeoMean[(j - (3 * gen - 1)):j, k])[[2]]
-                ppnChange[j] <- exp(sl[j] * 3 * gen) - 1
-              }
-            }
-            if (extinct[j, k] == 1) {
-              ppnChange[j] <- NA
-            }
-          }
-
-          ppnChangeMat[, k, n] <- ppnChange
-          ppnChangeNoNA <- which(is.na(ppnChange)[1:nYears] == "FALSE")
-          ppnYrsCOS[n, k] <- ifelse(length(ppnChangeNoNA) == 0,
-                                    0,
-                                    length(which(ppnChange[1:nYears] > -0.3)) /
-                                      length(ppnChangeNoNA))
-          ppnYrsWSP[n, k] <-ifelse(length(ppnChangeNoNA) == 0,
-                                   0,
-                                   length(which(ppnChange[1:nYears] > -0.25)) /
-                                     length(ppnChangeNoNA))
-          #invert to make positive (i.e. same directionality as above BMs)
-          S[, k][which(S[, k] == 0.00005)] <- 0
+      for (k in 1:nCU) {
+        #did a CU recover early, i.e. above BM year of 4th generation
+        if(sum(counterUpperBM[earlyPeriod, k]) == gen) {
+          counterEarlyUpperBM[n, k] <- 1
+        }
+        if(sum(counterLowerBM[earlyPeriod, k]) == gen) {
+          counterEarlyLowerBM[n, k] <- 1
+        }
+        #has a CU "recovered", i.e. above BM every year of last generation
+        if(sum(counterUpperBM[(nYears - gen + 1):nYears, k]) == gen) {
+          counterLateUpperBM[n, k] <- 1
+        }
+        if(sum(counterLowerBM[(nYears - gen + 1):nYears, k]) == gen) {
+          counterLateLowerBM[n, k] <- 1
+        }
+        if(sum(counterUpperObsBM[(nYears - gen + 1):nYears, k]) == gen) {
+          counterLateUpperObsBM[n, k] <- 1
+        }
+        if(sum(counterLowerObsBM[(nYears - gen + 1):nYears, k]) == gen) {
+          counterLateLowerObsBM[n, k] <- 1
         }
       }
-    }
+
+      # Calculate CU-specific trends across geometric means
+      ## NOTE: even with quickLm these functions are a big bottleneck
+      ## Make an optional output PM (rather than default) based on simPar
+      if (!is.null(simPar$statusTrendPM)) {
+        if (simPar$statusTrendPM == TRUE) {
+          for (k in 1:nCU) {
+            S[, k] <- ifelse(S[, k] == 0, 0.00005, S[, k])
+            #ask C Holt how this is generated, right now running blind
+            nYrsGeoMean <- nYears - nPrime
+            #generate geo mean spwnr abundance w.out NAs
+            strtGMean <- nPrime - gen
+            sGeoMean[strtGMean:nYears, k] <- genMean(S[strtGMean:nYears, k], gen)
+            lnSGeoMean <- log(sGeoMean)
+            ppnSLow[n, k] <- length(which(sGeoMean[, k] < 0.1)) / nYrsGeoMean
+            sl <- NA
+            ppnChange <- rep(NA, nYears)
+            # calculate slope over 12 year period i.e.,from year j-11 to j
+            for (j in (nPrime + (3 * gen - 1)):nYears) {
+              if (extinct[j, k] == 0) { #only calculate slopes when non-extinct
+                if (is.na(lnSGeoMean[j - (3 * gen - 1), k]) == "FALSE") {
+                  sl[j] <- quickLm(xVec = c(1:(3 * gen)),
+                                   yVec = lnSGeoMean[(j - (3 * gen - 1)):j, k])[[2]]
+                  ppnChange[j] <- exp(sl[j] * 3 * gen) - 1
+                }
+              }
+              if (extinct[j, k] == 1) {
+                ppnChange[j] <- NA
+              }
+            }
+
+            ppnChangeMat[, k, n] <- ppnChange
+            ppnChangeNoNA <- which(is.na(ppnChange)[1:nYears] == "FALSE")
+            ppnYrsCOS[n, k] <- ifelse(length(ppnChangeNoNA) == 0,
+                                      0,
+                                      length(which(ppnChange[1:nYears] > -0.3)) /
+                                        length(ppnChangeNoNA))
+            ppnYrsWSP[n, k] <-ifelse(length(ppnChangeNoNA) == 0,
+                                     0,
+                                     length(which(ppnChange[1:nYears] > -0.25)) /
+                                       length(ppnChangeNoNA))
+            #invert to make positive (i.e. same directionality as above BMs)
+            S[, k][which(S[, k] == 0.00005)] <- 0
+          }
+        }
+      }
+
+
 
     #__________________________________________________________________________
     ## Store trial specific outputs
@@ -1954,209 +1968,234 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   #____________________________________________________________________________
   ## CU-specific outputs
   # Data
-  meanSMSY <- arrayMean(sMSY) # CU's average BMs through time and trials
-  meanSGen <- arrayMean(sGen)
-  cuList <- list(nameOM, keyVar, plotOrder, nameMP, harvContRule, stkName,
-                 stkID, manUnit, targetER, cuProdTrends, meanSMSY, meanSGen,
-                 medS, varS,
-                 medObsS, varObsS, medRecRY, varRecRY, medRecBY, varRecBY,
-                 medObsRecRY, varObsRecRY, medAlpha, varAlpha, medEstAlpha,
-                 varEstAlpha, medBeta,
-                 medTotalCatch, varTotalCatch, (1 / varTotalCatch),
-                 medObsTotalCatch, varObsTotalCatch, (1 / varObsTotalCatch),
-                 medTotalER, medTotalObsER,
-                 counterEarlyUpperBM, counterEarlyLowerBM, ppnYrsUpperBM,
-                 ppnYrsLowerBM, ppnYrsUpperObsBM, ppnYrsLowerObsBM, ppnYrsCOS,
-                 ppnYrsWSP, medEarlyS, medEarlyRecRY, medEarlyTotalCatch,
-                 ppnYrsOpenSingle)
-  names(cuList) <- c("opMod", "keyVar", "plotOrder", "manProc", "hcr",
-                     "stkName", "stkNumber", "manUnit", "targetER",
-                     "cuProdTrends", "meanSMSY",
-                     "meanSGen", "medSpawners", "varSpawners", "medObsSpawners",
-                     "varObsSpawners", "medRecRY", "varRecRY", "medRecBY",
-                     "varRecBY", "medObsRecRY", "varObsRecRY", "medAlpha",
-                     "varAlpha", "medEstAlpha", "varEstAlpha", "medBeta",
-                     "medCatch",
-                     "varCatch", "stblCatch", "medObsCatch", "varObsCatch",
-                     "stblObsCatch", "medTotalER", "medObsTotalER",
-                     "counterEarlyUpper",
-                     "counterEarlyLower", "ppnYrsUpper", "ppnYrsLower",
-                     "ppnYrsEstUpper", "ppnYrsEstLower", "ppnYrsCOS",
-                     "ppnYrsWSP", "medEarlyS", "medEarlyRecRY",
-                     "medEarlyTotalCatch", "ppnYrsSingleOpen")
-  fileName <- ifelse(variableCU == "TRUE",
-                     paste(cuNameOM, cuNameMP, "cuDat.RData", sep = "_"),
-                     paste(nameOM, nameMP, "cuDat.RData", sep = "_"))
+  cuOutputs <- FALSE
+  if(cuOutputs){
+    meanSMSY <- arrayMean(sMSY) # CU's average BMs through time and trials
+    meanSGen <- arrayMean(sGen)
+    cuList <- list(nameOM, keyVar, plotOrder, nameMP, harvContRule, stkName,
+                   stkID, manUnit, targetER, cuProdTrends, meanSMSY, meanSGen,
+                   medS, varS,
+                   medObsS, varObsS, medRecRY, varRecRY, medRecBY, varRecBY,
+                   medObsRecRY, varObsRecRY, medAlpha, varAlpha, medEstAlpha,
+                   varEstAlpha, medBeta,
+                   medTotalCatch, varTotalCatch, (1 / varTotalCatch),
+                   medObsTotalCatch, varObsTotalCatch, (1 / varObsTotalCatch),
+                   medTotalER, medTotalObsER,
+                   counterEarlyUpperBM, counterEarlyLowerBM, ppnYrsUpperBM,
+                   ppnYrsLowerBM, ppnYrsUpperObsBM, ppnYrsLowerObsBM, ppnYrsCOS,
+                   ppnYrsWSP, medEarlyS, medEarlyRecRY, medEarlyTotalCatch,
+                   ppnYrsOpenSingle)
+    names(cuList) <- c("opMod", "keyVar", "plotOrder", "manProc", "hcr",
+                       "stkName", "stkNumber", "manUnit", "targetER",
+                       "cuProdTrends", "meanSMSY",
+                       "meanSGen", "medSpawners", "varSpawners", "medObsSpawners",
+                       "varObsSpawners", "medRecRY", "varRecRY", "medRecBY",
+                       "varRecBY", "medObsRecRY", "varObsRecRY", "medAlpha",
+                       "varAlpha", "medEstAlpha", "varEstAlpha", "medBeta",
+                       "medCatch",
+                       "varCatch", "stblCatch", "medObsCatch", "varObsCatch",
+                       "stblObsCatch", "medTotalER", "medObsTotalER",
+                       "counterEarlyUpper",
+                       "counterEarlyLower", "ppnYrsUpper", "ppnYrsLower",
+                       "ppnYrsEstUpper", "ppnYrsEstLower", "ppnYrsCOS",
+                       "ppnYrsWSP", "medEarlyS", "medEarlyRecRY",
+                       "medEarlyTotalCatch", "ppnYrsSingleOpen")
+    fileName <- ifelse(variableCU == "TRUE",
+                       paste(cuNameOM, cuNameMP, "cuDat.RData", sep = "_"),
+                       paste(nameOM, nameMP, "cuDat.RData", sep = "_"))
 
-  # saveRDS(cuList, file = paste(here("outputs/simData"), dirPath, fileName,
-  #                              sep = "/"), version=3)
+    saveRDS(cuList, file = paste(here("outputs/simData"), dirPath, fileName,
+                                 sep = "/"), version=3)
+
+  }
 
   #_____________________________________________________________________
   ## Aggregate outputs
   # Generate array of median, upper and lower quantiles that are passed to
   # plotting function
-  agNames <- c("Ag Spawners", "Obs Ag Spawners", "Ag Recruits RY",
-               "Obs Ag Recruits RY", "Ag Catch", "Obs Ag Catch", "Exp Rate",
-               "Obs Exp Rate", "Change Ag Catch",
-               "Prop Above Upper BM", "Prop Above Lower BM",
-               "Obs Prop Above Upper BM", "Obs Prop Above Lower BM")
-  agDat <- array(c(sAg, obsSAg, recRYAg, obsRecRYAg, catchAg, obsCatchAg,
-                   expRateAg, obsExpRateAg, ppnCUsUpperBM,
-                   ppnCUsLowerBM, ppnCUsUpperObsBM, ppnCUsLowerObsBM),
-                 dim = c(nYears, nTrials, length(agNames)))
-  dimnames(agDat)[[3]] <- agNames
+  aggOutputs <- FALSE
+  if(aggOutputs){
+    agNames <- c("Ag Spawners", "Obs Ag Spawners", "Ag Recruits RY",
+                 "Obs Ag Recruits RY", "Ag Catch", "Obs Ag Catch", "Exp Rate",
+                 "Obs Exp Rate", "Change Ag Catch",
+                 "Prop Above Upper BM", "Prop Above Lower BM",
+                 "Obs Prop Above Upper BM", "Obs Prop Above Lower BM")
+    agDat <- array(c(sAg, obsSAg, recRYAg, obsRecRYAg, catchAg, obsCatchAg,
+                     expRateAg, obsExpRateAg, ppnCUsUpperBM,
+                     ppnCUsLowerBM, ppnCUsUpperObsBM, ppnCUsLowerObsBM),
+                   dim = c(nYears, nTrials, length(agNames)))
+    dimnames(agDat)[[3]] <- agNames
 
 
-  # Save aggregate data as list to create TS plot
-  agTSList <- c(list(nameOM, keyVar, plotOrder, nameMP, harvContRule,
-                     targetExpRateAg, firstYr, nPrime, nYears),
-                plyr::alply(agDat, 3, .dims = TRUE))
-  names(agTSList)[1:9] <- c("opMod", "keyVar", "plotOrder", "manProc", "hcr",
-                            "targetExpRate", "firstYr", "nPrime", "nYears")
-  fileName <- ifelse(variableCU == "TRUE",
-                     paste(cuNameOM, cuNameMP, "aggTimeSeries.RData",
-                           sep = "_"),
-                     paste(nameOM, nameMP, "aggTimeSeries.RData", sep = "_"))
-  # saveRDS(agTSList, file = paste(here("outputs/simData"), dirPath, fileName,
-  #                                sep = "/"), version=3)
+    # Save aggregate data as list to create TS plot
+    agTSList <- c(list(nameOM, keyVar, plotOrder, nameMP, harvContRule,
+                       targetExpRateAg, firstYr, nPrime, nYears),
+                  plyr::alply(agDat, 3, .dims = TRUE))
+    names(agTSList)[1:9] <- c("opMod", "keyVar", "plotOrder", "manProc", "hcr",
+                              "targetExpRate", "firstYr", "nPrime", "nYears")
+    fileName <- ifelse(variableCU == "TRUE",
+                       paste(cuNameOM, cuNameMP, "aggTimeSeries.RData",
+                             sep = "_"),
+                       paste(nameOM, nameMP, "aggTimeSeries.RData", sep = "_"))
+    saveRDS(agTSList, file = paste(here("outputs/simData"), dirPath, fileName,
+                                   sep = "/"), version=3)
+    # Store aggregate data as data frame; each variable is a vector of single, trial-specific values
+    yrsSeq <- (nPrime + 1):nYears
+    aggDat <- data.frame(opMod = rep(nameOM, length.out = nTrials),
+                         manProc = rep(nameMP, length.out = nTrials),
+                         keyVar = rep(keyVar, length.out = nTrials),
+                         plotOrder = rep(plotOrder, length.out = nTrials),
+                         hcr = rep(harvContRule, length.out = nTrials),
+                         trial = seq(from = 1, to = nTrials, length.out = nTrials),
+                         targetER = apply(targetExpRateAg[(nPrime + 1):nYears, ], 2, median), #median target ER (stable through time unless TAM rule active)
+                         medSpawners = apply(sAg[yrsSeq, ], 2, median), #median aggregate spawner abundance across management period (i.e. loop 3 when status is assessed)
+                         varSpawners = apply(sAg[yrsSeq, ], 2, cv), #cv aggregate spawner abundance across management period
+                         medObsSpawners = apply(obsSAg[yrsSeq, ], 2, median), #median aggregate estimated spawner abundance across management period (i.e. loop 3 when status is assessed)
+                         varObsSpawners = apply(obsSAg[yrsSeq, ], 2, cv), #cv aggregate estimated spawner abundance across management period
+                         medRecRY = apply(recRYAg[yrsSeq, ], 2, median), #median aggregate spawner abundance across management period (i.e. loop 3 when status is assessed)
+                         varRecRY = apply(recRYAg[yrsSeq, ], 2, cv), #cv aggregate recruit abundance across management period
+                         medRecBY = apply(recBYAg[yrsSeq, ], 2, median), #median aggregate recruit abundance across management period (i.e. loop 3 when status is assessed)
+                         varRecBY = apply(recBYAg[yrsSeq, ], 2, cv), #cv aggregate recruit abundance across management period
+                         medObsRecBY = apply(obsRecBYAg[yrsSeq, ], 2,
+                                             function(x) median(x, na.rm = TRUE)), #median aggregate estimated recruit abundance across management period (i.e. loop 3 when status is assessed)
+                         varObsRecBY = apply(obsRecBYAg[yrsSeq, ], 2, cv), #cv aggregate estimated recruit abundance across management period
+                         medObsRecRY = apply(obsRecRYAg[yrsSeq, ], 2, median), #median aggregate estimated recruit abundance across management period (i.e. loop 3 when status is assessed)
+                         varObsRecRY = apply(obsRecRYAg[yrsSeq, ], 2, cv), #cv aggregate estimated recruit abundance across management period
+                         medSpawnersLate = apply(sAg[(nYears - (3 * gen)):nYears, ], 2, median), #median aggregate spawner abundance in last 2 generations of management period
+                         medCatch = apply(catchAg[yrsSeq, ], 2, median), #median aggregate catch across management period
+                         varCatch = apply(catchAg[yrsSeq, ], 2, cv), #cv aggregate catch across management period
+                         stabilityCatch = apply(catchAg[yrsSeq, ], 2,
+                                                function(x) 1 / cv(x)), #stability of aggregate catch across management period
+                         medObsCatch = apply(obsCatchAg[yrsSeq, ], 2, median), #median aggregate catch across management period
+                         varObsCatch = apply(obsCatchAg[yrsSeq, ], 2, cv), #cv aggregate catch across management period
+                         stabilityObsCatch = apply(obsCatchAg[yrsSeq, ], 2,
+                                                   function(x) 1 / cv(x)), #stability of obs aggregate catch across management period
+                         medCatchLate = apply(catchAg[(nYears - 3*gen):nYears, ], 2, median), #median aggregate catch in last 2 generations of management period
+                         medER = apply(expRateAg[yrsSeq,], 2, median), #median true aggregate ER
+                         medObsER = apply(obsExpRateAg[yrsSeq, ], 2, median), #median true aggregate ER
+                         #ppnYrsLowCatch = apply(lowCatchAgBM[yrsSeq, ], 2, mean), #proportion of years in management period aggregate catch is above summed catch thresholds
+                         #ppnYrsHighCatch = apply(highCatchAgBM[yrsSeq, ], 2, mean), #proportion of years in management period aggregate catch is above summed catch thresholds
+                         # ppnYrsEscGoal = apply(agEscGoal[yrsSeq, ], 2, mean), #ppn of years aggregate escapement goal met
+                         # ppnYrsCUsLower = apply(ppnLowerBM[yrsSeq, ], 2, mean), #proportion of years at least 50% of CUs are above lower BM
+                         #  ppnYrsCUsUpper = apply(ppnUpperBM[yrsSeq, ], 2, mean), #proportion of years at least 50% of CUs are above upper BM
+                         #  ppnCUUpper = apply(ppnCUsUpperBM[yrsSeq, ], 2, mean), #mean proportion of CUs above upper benchmark in last generations of management period
+                         #  ppnCULower = apply(ppnCUsLowerBM[yrsSeq, ], 2, mean), #mean proportion of CUs above lower benchmark in last generations of management period
+                         #   ppnCUEstUpper = apply(na.omit(ppnCUsUpperObsBM), 2, mean), #proportion of CUs estimated above upper benchmark in last 2 generations of management period
+                         #    ppnCUEstLower = apply(na.omit(ppnCUsLowerObsBM), 2, mean), #proportion of CUs estimated above lower benchmark in last 2 generations of management period
+                         ppnCURecover = apply(na.omit(counterLateUpperBM), 1, mean), #proportion of CUs above upper benchmark in last generations of management period
+                         ppnCUStable = apply(na.omit(counterLateLowerBM), 1, mean), #proportion of CUs above lower benchmark in last generations of management period
+                         ppnCUExtinct = ppnCUsExtinct[nYears, ], #proportion of CUs extinct at end of simulation period
+                         ppnCUExtant = (1 - ppnCUsExtinct[nYears, ]), #proportion of CUs EXTANT at end of simulation period
+                         #ppnCUConstrained = apply(na.omit(ppnConstrained), 2,
+                         #                         mean),
+                         medSpawnersEarly = apply(sAg[(nPrime + 1):endEarly, ], 2, median),
+                         medRecRYEarly = apply(recRYAg[(nPrime + 1):endEarly, ], 2, median),
+                         medCatchEarly = apply(catchAg[(nPrime + 1):endEarly, ], 2, median) #median aggregate catch in first 2 generations of management period
+    )
 
-  # Store aggregate data as data frame; each variable is a vector of single, trial-specific values
-  yrsSeq <- (nPrime + 1):nYears
-  aggDat <- data.frame(opMod = rep(nameOM, length.out = nTrials),
-                       manProc = rep(nameMP, length.out = nTrials),
-                       keyVar = rep(keyVar, length.out = nTrials),
-                       plotOrder = rep(plotOrder, length.out = nTrials),
-                       hcr = rep(harvContRule, length.out = nTrials),
-                       trial = seq(from = 1, to = nTrials, length.out = nTrials),
-                       targetER = apply(targetExpRateAg[(nPrime + 1):nYears, ], 2, median), #median target ER (stable through time unless TAM rule active)
-                       medSpawners = apply(sAg[yrsSeq, ], 2, median), #median aggregate spawner abundance across management period (i.e. loop 3 when status is assessed)
-                       varSpawners = apply(sAg[yrsSeq, ], 2, cv), #cv aggregate spawner abundance across management period
-                       medObsSpawners = apply(obsSAg[yrsSeq, ], 2, median), #median aggregate estimated spawner abundance across management period (i.e. loop 3 when status is assessed)
-                       varObsSpawners = apply(obsSAg[yrsSeq, ], 2, cv), #cv aggregate estimated spawner abundance across management period
-                       medRecRY = apply(recRYAg[yrsSeq, ], 2, median), #median aggregate spawner abundance across management period (i.e. loop 3 when status is assessed)
-                       varRecRY = apply(recRYAg[yrsSeq, ], 2, cv), #cv aggregate recruit abundance across management period
-                       medRecBY = apply(recBYAg[yrsSeq, ], 2, median), #median aggregate recruit abundance across management period (i.e. loop 3 when status is assessed)
-                       varRecBY = apply(recBYAg[yrsSeq, ], 2, cv), #cv aggregate recruit abundance across management period
-                       medObsRecBY = apply(obsRecBYAg[yrsSeq, ], 2,
-                                           function(x) median(x, na.rm = TRUE)), #median aggregate estimated recruit abundance across management period (i.e. loop 3 when status is assessed)
-                       varObsRecBY = apply(obsRecBYAg[yrsSeq, ], 2, cv), #cv aggregate estimated recruit abundance across management period
-                       medObsRecRY = apply(obsRecRYAg[yrsSeq, ], 2, median), #median aggregate estimated recruit abundance across management period (i.e. loop 3 when status is assessed)
-                       varObsRecRY = apply(obsRecRYAg[yrsSeq, ], 2, cv), #cv aggregate estimated recruit abundance across management period
-                       medSpawnersLate = apply(sAg[(nYears - (3 * gen)):nYears, ], 2, median), #median aggregate spawner abundance in last 2 generations of management period
-                       medCatch = apply(catchAg[yrsSeq, ], 2, median), #median aggregate catch across management period
-                       varCatch = apply(catchAg[yrsSeq, ], 2, cv), #cv aggregate catch across management period
-                       stabilityCatch = apply(catchAg[yrsSeq, ], 2,
-                                              function(x) 1 / cv(x)), #stability of aggregate catch across management period
-                       medObsCatch = apply(obsCatchAg[yrsSeq, ], 2, median), #median aggregate catch across management period
-                       varObsCatch = apply(obsCatchAg[yrsSeq, ], 2, cv), #cv aggregate catch across management period
-                       stabilityObsCatch = apply(obsCatchAg[yrsSeq, ], 2,
-                                                 function(x) 1 / cv(x)), #stability of obs aggregate catch across management period
-                       medCatchLate = apply(catchAg[(nYears - 3*gen):nYears, ], 2, median), #median aggregate catch in last 2 generations of management period
-                       medER = apply(expRateAg[yrsSeq,], 2, median), #median true aggregate ER
-                       medObsER = apply(obsExpRateAg[yrsSeq, ], 2, median), #median true aggregate ER
-                       #ppnYrsLowCatch = apply(lowCatchAgBM[yrsSeq, ], 2, mean), #proportion of years in management period aggregate catch is above summed catch thresholds
-                       #ppnYrsHighCatch = apply(highCatchAgBM[yrsSeq, ], 2, mean), #proportion of years in management period aggregate catch is above summed catch thresholds
-                       # ppnYrsEscGoal = apply(agEscGoal[yrsSeq, ], 2, mean), #ppn of years aggregate escapement goal met
-                       # ppnYrsCUsLower = apply(ppnLowerBM[yrsSeq, ], 2, mean), #proportion of years at least 50% of CUs are above lower BM
-                       #  ppnYrsCUsUpper = apply(ppnUpperBM[yrsSeq, ], 2, mean), #proportion of years at least 50% of CUs are above upper BM
-                       #  ppnCUUpper = apply(ppnCUsUpperBM[yrsSeq, ], 2, mean), #mean proportion of CUs above upper benchmark in last generations of management period
-                       #  ppnCULower = apply(ppnCUsLowerBM[yrsSeq, ], 2, mean), #mean proportion of CUs above lower benchmark in last generations of management period
-                       #   ppnCUEstUpper = apply(na.omit(ppnCUsUpperObsBM), 2, mean), #proportion of CUs estimated above upper benchmark in last 2 generations of management period
-                       #    ppnCUEstLower = apply(na.omit(ppnCUsLowerObsBM), 2, mean), #proportion of CUs estimated above lower benchmark in last 2 generations of management period
-                       ppnCURecover = apply(na.omit(counterLateUpperBM), 1, mean), #proportion of CUs above upper benchmark in last generations of management period
-                       ppnCUStable = apply(na.omit(counterLateLowerBM), 1, mean), #proportion of CUs above lower benchmark in last generations of management period
-                       ppnCUExtinct = ppnCUsExtinct[nYears, ], #proportion of CUs extinct at end of simulation period
-                       ppnCUExtant = (1 - ppnCUsExtinct[nYears, ]), #proportion of CUs EXTANT at end of simulation period
-                       #ppnCUConstrained = apply(na.omit(ppnConstrained), 2,
-                       #                         mean),
-                       medSpawnersEarly = apply(sAg[(nPrime + 1):endEarly, ], 2, median),
-                       medRecRYEarly = apply(recRYAg[(nPrime + 1):endEarly, ], 2, median),
-                       medCatchEarly = apply(catchAg[(nPrime + 1):endEarly, ], 2, median) #median aggregate catch in first 2 generations of management period
-  )
-  fileName <- ifelse(variableCU == "TRUE", paste(cuNameOM, cuNameMP, "aggDat.csv", sep = "_"),
-                     paste(nameOM, nameMP, "aggDat.csv", sep = "_"))
-  # write.csv(aggDat, file = paste(here("outputs/simData"), dirPath, fileName, sep = "/"), row.names = FALSE)
+    fileName <- ifelse(variableCU == "TRUE", paste(cuNameOM, cuNameMP, "aggDat.csv", sep = "_"),
+                       paste(nameOM, nameMP, "aggDat.csv", sep = "_"))
+    write.csv(aggDat, file = paste(here("outputs/simData"), dirPath, fileName, sep = "/"), row.names = FALSE)
+
+
+  }# End of if(aggOutputs)
 
 
   # Create LRP data for output
-  colnames(sAg)<-as.character(1:nTrials)
-  sAg.dat<-as.data.frame(sAg)
-  sAg.dat<-sAg.dat %>% tibble::add_column(year=1:nYears)
-  sAg.dat<-sAg.dat %>% tidyr::pivot_longer(as.character(1:nTrials), names_to="iteration", values_to="sAg")
+  lrpOutputs <- FALSE
+  if(lrpOutputs){
+    colnames(sAg)<-as.character(1:nTrials)
+    sAg.dat<-as.data.frame(sAg)
+    sAg.dat<-sAg.dat %>% tibble::add_column(year=1:nYears)
+    sAg.dat<-sAg.dat %>% tidyr::pivot_longer(as.character(1:nTrials), names_to="iteration", values_to="sAg")
 
-  colnames(ppnCUsLowerBM)<-as.character(1:nTrials)
-  ppnCUs.dat<-as.data.frame(ppnCUsLowerBM)
-  ppnCUs.dat<-ppnCUs.dat %>% tibble::add_column(year=1:nYears)
-  ppnCUs.dat<-ppnCUs.dat %>% tidyr::pivot_longer(as.character(1:nTrials), names_to="iteration", values_to="ppnCUsLowerBM")
+    colnames(ppnCUsLowerBM)<-as.character(1:nTrials)
+    ppnCUs.dat<-as.data.frame(ppnCUsLowerBM)
+    ppnCUs.dat<-ppnCUs.dat %>% tibble::add_column(year=1:nYears)
+    ppnCUs.dat<-ppnCUs.dat %>% tidyr::pivot_longer(as.character(1:nTrials), names_to="iteration", values_to="ppnCUsLowerBM")
 
-  LRP.dat <- sAg.dat %>% dplyr::left_join(ppnCUs.dat)
+    LRP.dat <- sAg.dat %>% dplyr::left_join(ppnCUs.dat)
 
-  fileName <- ifelse(variableCU == "TRUE", paste(cuNameOM, cuNameMP, "lrpDat.csv", sep = "_"),
-                     paste(nameOM, nameMP, "lrpDat.csv", sep = "_"))
+    fileName <- ifelse(variableCU == "TRUE", paste(cuNameOM, cuNameMP, "lrpDat.csv", sep = "_"),
+                       paste(nameOM, nameMP, "lrpDat.csv", sep = "_"))
 
-  # write.csv(LRP.dat, file = paste(here("outputs/simData"), dirPath, fileName, sep = "/"),
-  #           row.names = FALSE)
+    write.csv(LRP.dat, file = paste(here("outputs/simData"), dirPath, fileName, sep = "/"),
+              row.names = FALSE)
+  }
 
 
 
   # Create CU spawner abundance data for output
+  cuSROutputs <- TRUE
+  if(cuSROutputs){
+    for(i in 1:nTrials) {
+      # spwnrArray = df of number of columns = number of Cus
+      spnDat.i<-as.data.frame(spwnrArray[,,i])
+      recDat.i<-as.data.frame(recArray[,,i])
+      obsSpnDat.i<-as.data.frame(obsSpwnrArray[,,i])
+      obsRecDat.i<-as.data.frame(obsRecArray[,,i])
+      alphaDat.i<-as.data.frame(alphaArray[,,i])
+      betaDat.i<-as.data.frame(betaArray[,,i])
 
-  for(i in 1:nTrials) {
-    # spwnrArray = df of number of columns = number of Cus
-    spnDat.i<-as.data.frame(spwnrArray[,,i])
-    recDat.i<-as.data.frame(recArray[,,i])
-    obsSpnDat.i<-as.data.frame(obsSpwnrArray[,,i])
-    obsRecDat.i<-as.data.frame(obsRecArray[,,i])
-    alphaDat.i<-as.data.frame(alphaArray[,,i])
-    betaDat.i<-as.data.frame(betaArray[,,i])
+      if(nrow(spnDat.i) != nrow(recDat.i) )
+        print("warning, spawner and recruitment are not aligned in output csv file")
 
-    if(nrow(spnDat.i) != nrow(recDat.i) )
-      print("warning, spawner and recruitment are not aligned in output csv file")
+      if(nrow(alphaDat.i) != nrow(recDat.i) )
+        print("warning, alpha and recruitment are not aligned in output csv file")
 
-    if(nrow(alphaDat.i) != nrow(recDat.i) )
-      print("warning, alpha and recruitment are not aligned in output csv file")
+      spnDat.i<-spnDat.i %>% tibble::add_column(year=1:nrow(spwnrArray)) %>%
+        tibble::add_column(iteration=rep(i,nrow(spwnrArray)))
 
-    spnDat.i<-spnDat.i %>% tibble::add_column(year=1:nrow(spwnrArray)) %>%
-      tibble::add_column(iteration=rep(i,nrow(spwnrArray)))
+      spnDat_long.i <- spnDat.i %>%
+        dplyr::select( tidyr::starts_with("V"), iteration, year) %>%
+        tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="spawners")
 
-    spnDat_long.i <- spnDat.i %>%
-      dplyr::select( tidyr::starts_with("V"), iteration, year) %>%
-      tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="spawners")
+      spnDat_long.i$CU<-rep(1:nCU,length=nrow(spnDat_long.i))
 
-    spnDat_long.i$CU<-rep(1:nCU,length=nrow(spnDat_long.i))
+      recDat_long.i <- recDat.i %>%
+        tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="recruits")
+      obsSpnDat_long.i <- obsSpnDat.i %>%
+        tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="obsSpawners")
+      obsRecDat_long.i <- obsRecDat.i %>%
+        tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="obsRecruits")
+      alphaDat_long.i <- alphaDat.i %>%
+        tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="alpha")
+      betaDat_long.i <- betaDat.i %>%
+        tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="beta")
 
-    recDat_long.i <- recDat.i %>%
-      tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="recruits")
-    obsSpnDat_long.i <- obsSpnDat.i %>%
-      tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="obsSpawners")
-    obsRecDat_long.i <- obsRecDat.i %>%
-      tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="obsRecruits")
-    alphaDat_long.i <- alphaDat.i %>%
-      tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="alpha")
-    betaDat_long.i <- betaDat.i %>%
-      tidyr::pivot_longer(tidyr::starts_with("V"),names_to="CU", values_to="beta")
-
-    srDat_long.i <- spnDat_long.i %>% tibble::add_column(recruits=recDat_long.i$recruits) %>%
-      tibble::add_column(obsSpawners=obsSpnDat_long.i$obsSpawners) %>%
-      tibble::add_column(obsRecruits=obsRecDat_long.i$obsRecruits) %>%
-      tibble::add_column(alpha=alphaDat_long.i$alpha) %>%
-      tibble::add_column(beta=betaDat_long.i$beta)
+      srDat_long.i <- spnDat_long.i %>% tibble::add_column(recruits=recDat_long.i$recruits) %>%
+        tibble::add_column(obsSpawners=obsSpnDat_long.i$obsSpawners) %>%
+        tibble::add_column(obsRecruits=obsRecDat_long.i$obsRecruits) %>%
+        tibble::add_column(alpha=alphaDat_long.i$alpha) %>%
+        tibble::add_column(beta=betaDat_long.i$beta)
 
 
 
 
     if (i == 1) srDatout<-srDat_long.i
-    if (i > 1) {
-      srDatout <- dplyr::bind_rows(srDatout,srDat_long.i)
+      if (i > 1) {
+        srDatout <- dplyr::bind_rows(srDatout,srDat_long.i)
+      }
     }
 
-  }
+    # fileName <- ifelse(variableCU == "TRUE", paste(cuNameOM, cuNameMP, "CUsrDat.csv", sep = "_"),
+    #                    paste(nameOM, nameMP, "CUsrDat.csv", sep = "_"))
+    #
+    # write.csv(srDatout, file = paste(here("outputs/simData"), dirPath, fileName, sep = "/"),
+    #           row.names = FALSE)
 
-  fileName <- ifelse(variableCU == "TRUE", paste(cuNameOM, cuNameMP, "CUsrDat.csv", sep = "_"),
-                     paste(nameOM, nameMP, "CUsrDat.csv", sep = "_"))
 
-  write.csv(srDatout, file = paste(here("outputs/simData"), dirPath, fileName, sep = "/"),
-            row.names = FALSE)
+    srDatoutList <- list(srDatout, nameOM, simYears, nTrials, ricSig, rho, canER, obsSig,
+                         obsMixCatchSig, prod, prodScalars, cap, capacityScalars, trendLength)
+    names(srDatoutList) <- c("srDatout", "nameOM", "simYears", "nTrials", "ricSig", "rho",
+                             "canER", "obsSig", "obsMixCatchSig", "prod", "prodScalars",
+                             "cap", "capacityScalars", "trendLength")
+    fileName <- ifelse(variableCU == "TRUE", paste(cuNameOM, cuNameMP, "CUsrDat.RData", sep = "_"),
+                       paste(nameOM, nameMP, "CUsrDat.RData", sep = "_"))
 
+    saveRDS(srDatoutList, file = paste(here("outputs/simData"), dirPath, fileName,
+                                       sep = "/"), version=3)
+
+  }#End of if(cuSROutputs)
 
   } # end of genericRecoverySim()
