@@ -1,5 +1,5 @@
 scenario,nameOM,nameMP,keyVar,plotOrder,species,simYears,harvContRule,benchmark,canER,usER,propMixHigh,singleHCR,moveTAC,prodRegime,prodPpnChange,trendLength,capRegime,capPpnChange,arSigTransform,correlCU,corrMat,tauCatch,obsSig,mixOUSig,singOUSig,obsMixCatchSig,obsSingCatchSig,obsAgeErr,lowCatchThresh,highCatchThresh,extinctThresh,adjustSig,rho,adjustAge,adjustForecast
-stationary,stationary,ref,prodRegime,1,coho,30,fixedER,stockRecruit,0.125,0,1,FALSE,FALSE,linear,1,30,linear,1,FALSE,0,FALSE,0,0,0,0,0,0,0,0,NA,1,1,0,1,1
-increaseProd,increaseProd,ref,prodRegime,1,coho,30,fixedER,stockRecruit,0.125,0,1,FALSE,FALSE,linear,3,30,linear,1,FALSE,0,FALSE,0,0,0,0,0,0,0,0,NA,1,1,0,1,1
-increaseCapacity,increaseCapacity,ref,prodRegime,1,coho,30,fixedER,stockRecruit,0.125,0,1,FALSE,FALSE,linear,1,30,linear,3,FALSE,0,FALSE,0,0,0,0,0,0,0,0,NA,1,1,0,1,1
-increaseProd&Capacity,increaseProd&Capacity,ref,prodRegime,1,coho,30,fixedER,stockRecruit,0.125,0,1,FALSE,FALSE,linear,3,30,linear,3,FALSE,0,FALSE,0,0,0,0,0,0,0,0,NA,1,1,0,1,1
+stationary,stationary,ref,prodRegime,1,coho,30,fixedER,stockRecruit,0.125,0,1,FALSE,FALSE,regime,2,30,linear,1,FALSE,0,FALSE,0,0,0,0,0,0,0,0,NA,1,1,0,1,1
+increaseProd,increaseProd,ref,prodRegime,1,coho,30,fixedER,stockRecruit,0.125,0,1,FALSE,FALSE,regime,3,30,linear,1,FALSE,0,FALSE,0,0,0,0,0,0,0,0,NA,1,1,0,1,1
+increaseCapacity,increaseCapacity,ref,prodRegime,1,coho,30,fixedER,stockRecruit,0.125,0,1,FALSE,FALSE,regime,1,30,linear,3,FALSE,0,FALSE,0,0,0,0,0,0,0,0,NA,1,1,0,1,1
+increaseProd&Capacity,increaseProd&Capacity,ref,prodRegime,1,coho,30,fixedER,stockRecruit,0.125,0,1,FALSE,FALSE,regime,3,30,linear,3,FALSE,0,FALSE,0,0,0,0,0,0,0,0,NA,1,1,0,1,1

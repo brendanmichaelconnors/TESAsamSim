@@ -271,6 +271,16 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   finalAlpha <- prodScalars * alpha
   trendLength <- simPar$trendLength#3 * gen
   trendAlpha <- (finalAlpha - alpha) / trendLength
+
+  # Create matrix of alphas that correspond to 10-year regimes that iterate between
+  # initial alpha and final alpha
+  runRegime <- function(a1,a2,y)( rep( c(rep(a1,10),rep(a2,10)), ceiling(y/20) )[1:y] )
+  regimeAlpha <- mapply(runRegime, alpha, alpha*simPar$prodPpnChange, rep(simYears,length(alpha)))
+  regimeAlpha <- rbind(matrix(NA, nrow=17, ncol=5), regimeAlpha)
+
+  # Replaced with mapply to avoid calling another package
+  # purrr::pmap(list(alpha, finalAlpha, rep(50,5)), runRegime)
+
   cuProdTrends <- dplyr::case_when(
     prodScalars < 1 ~ "decline", #== "0.65" ~ "decline",
     prodScalars == "1" ~ "stable",
@@ -296,7 +306,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
     capacityScalars <- rep(simPar$capPpnChange, nCU)
   } else if (cap == "decline" ) {
     capacityScalars <- rep(0.65, nCU)
-  }else if (cap == "increase" ) {
+  } else if (cap == "increase" ) {
     capacityScalars <- rep(1.35, nCU)
   }
 
@@ -991,13 +1001,21 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
       # Specify alpha
       #In first year, switch from reference alpha used in priming to testing alpha; add trend for 3 generations by default
       if (y > (nPrime + 1)) {
-        if (prodStable == FALSE & y < (nPrime + trendLength + 1)) {
+        if (prod == "linear" & y < (nPrime + trendLength + 1)) {
           alphaMat[y, ] <- alphaMat[y - 1, ] + trendAlpha
-        } else {
-          alphaMat[y, ] <- finalAlpha
+        }
+        if (prod == "linear" & y >= (nPrime + trendLength + 1)) {
+            alphaMat[y, ] <- finalAlpha
         } #end if prodStable == FALSE and inside trendPeriod
-      } else {
-        alphaMat[y, ] <- alphaMat[y - 1, ]
+        if (prod == "regime") {
+          alphaMat[y, ] <- regimeAlpha[y, ]
+        } #end if prod == "regime"
+        if (prodStable) {
+          alphaMat[y, ] <- alphaMat[y - 1, ]
+        }
+        if (!prodStable & prod!="linear" & prod!="regime"){
+          alphaMat[y, ] <- finalAlpha
+        }
       } #end if y > (nPrime + 1)
 
       # Specify beta
