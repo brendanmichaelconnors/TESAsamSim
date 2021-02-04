@@ -96,6 +96,7 @@ Simulations are run by installing the TESAsamSim package and using the `genericR
   - `highCatchThresh` - upper aggregate catch target (used as a performance metric)
   - `extinctThresh` - quasi-extinction threshold
   - `adjustSig` - scalar on CU-specific sigmas (recruitment deviations)
+  - `rho` - temporal autocorrelation coefficient in recruitment deviations
   - `adjustAge` - scalar on `tauCatch`
   - `adjustEnRouteSig` - scalar on en route mortality rates
 
@@ -113,7 +114,6 @@ Mandatory contents include:
   - `alpha` - productivity parameter for Ricker models
   - `beta0` - density-dependence parameter for Ricker models
   - `sigma` - recruitment variation for Ricker models
-  - `rho` - temporal autocorrelation coefficient in recruitment deviations
   - `meanRec2` - mean proportion of age-2 recruits
   - `meanRec3` - mean proportion of age-3 recruits
   - `meanRec4` - mean proportion of age-4 recruits

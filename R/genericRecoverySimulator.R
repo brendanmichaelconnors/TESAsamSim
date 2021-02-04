@@ -72,6 +72,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   moveTAC <- ifelse(is.null(simPar$moveTAC), FALSE, simPar$moveTAC) #if TRUE single stock TAC for low abundance CUs is re-allocated
   correlCU <- simPar$correlCU #correlation among CUs in recruitment deviations
   adjSig <- simPar$adjustSig # used to scale CU specific sigma up or down
+  rho <- simPar$rho # autocorrelation coefficient in recruitment residuals
   tauCatch <- simPar$tauCatch # CU-specific catch assignment error for observation model
   obsSig <- simPar$obsSig #estimated spawner abundance error
   mixOUSig <- simPar$mixOUSig #mixed fisheries outcome uncertainty error (same for canadian and US fisheries)
@@ -153,7 +154,6 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   ricA <- cuPar$alpha
   ricB <- cuPar$beta0
   ricSig <- cuPar$sigma
-  rho <- cuPar$rho # autocorrelation coefficient in recruitment residuals
   larA <- cuPar$larkAlpha
   larB <- cuPar$larkBeta0
   larB1 <- cuPar$larkBeta1
@@ -1643,7 +1643,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
         if (S[y, k] > 0) {
           if (model[k] == "ricker") {
             dum <- rickerModel(S[y, k], alphaMat[y, k], betaMat[y,k],
-                               error = errorCU[y, k], rho = rho[k],
+                               error = errorCU[y, k], rho = rho,
                                prevErr = laggedError[y - 1, k])
             laggedError[y, k] <- dum[[2]]
             #keep recruitment below CU-specific cap
