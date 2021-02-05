@@ -1,0 +1,3 @@
+manUnit,stkName,stk,model,domCycle,usER,minER,tauCycAge,alpha,beta0,sigma,aveGenTime,ageFirstRec,ageMaxRec,meanRec2,meanRec3,meanRec4,meanRec5,meanRec6,medianRec,lowQRec,highQRec,meanDBE,sdDBE,medMA,meanForecast,sdForecast
+IFCoho,cohoCU1,1,ricker,NA,0,0.05,0,1,1.07E-04,0.6,3,2,4,0,0.84,0.16,0,0,5019,4349,5562,NA,NA,NA,NA,NA
+IFCoho,cohoCU2,2,ricker,NA,0,0.05,0,1.14,3.49E-04,0.72,3,2,4,0,0.84,0.16,0,0,2940,1926,3281,NA,NA,NA,NA,NA
