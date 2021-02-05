@@ -1,0 +1,205 @@
+---
+title: "Example TESAsamSim Run and DLM fit"
+author: "Brendan Connors and Carrie Holt. Updated by Luke Warkentin and Robyn Forrest"
+date: "February 4, 2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+This document illustrates how to simulate some stock-recruitment data using the `TESAsamSim` R package and then fit a linear state-space model (aka Dynamic Linear model) with potentially time-varying parameters to it. The model is fit via Maximum likelihood followed by Kalman filtering and smoothing using a wrapper for the `dlm` R package (see [here](https://cran.r-project.org/web/packages/dlm/index.html)). The wrapper is based in part on code generously provided by Cody Szuwalski (NOAA). For this illustrative example the simulations are based on the population characteristics of Interior Fraser River coho salmon.
+
+First, load packages, read in data and set up scenarios
+
+[Figure out how to do all this with purrr or furrr later]
+
+```{r, echo=FALSE, warning=FALSE}
+
+## Check if necessary packages are available and install if necessary
+listOfPackages <- c("here", "parallel", "doParallel", "foreach", 
+                    "tidyverse", "tictoc", "TESAsamSim")
+newPackages <- listOfPackages[!(listOfPackages %in% 
+                                  installed.packages()[ , "Package"])]
+if (length(newPackages)) {
+  install.packages(newPackages)
+}
+lapply(listOfPackages, require, character.only = TRUE)
+
+# load wrapper function to fit dynamic linear models
+source(here("dlm-wrapper.R"))
+
+# ## Load relevant input data
+# # CU-specific parameters
+# cuPar <- read.csv(here("data", "IFCohoPars", "CUpars.csv"),
+#                   stringsAsFactors=F)
+# 
+# # Stock-recruit and catch data that are used to populate the simulation priming/conditioning period
+# srDat <- read.csv(here("data", "IFCohoPars", "cohoRecDatTrim.csv"),
+#                   stringsAsFactors=F)
+# 
+# simPar <- read.csv(here("data", "IFCohoPars",
+#                          "SimPar.csv"),
+#                        stringsAsFactors = F)
+# 
+# # Directory where simulated data will be saved
+# scenNames <- unique(simPar$scenario)
+# 
+# #HACK to add numbers to names so they sort in plots. Could probably use some fancy factor approach
+# for(i in 1:length(scenNames)) scenNames[i] <- paste0(i,"_", scenNames[i])
+# 
+# 
+# dirNames <- sapply(scenNames, function(x) paste(x, unique(simPar$species),
+#                                                 sep = "_"))
+# # loop through each scenario and simulate data
+# for (i in 1:4){
+#  genericRecoverySim(simPar=simPar[i,], cuPar=cuPar,  srDat=srDat,
+#             variableCU=FALSE, ricPars=NULL, #ricPars,  #cuCustomCorrMat = cuCustomCorrMat,
+#             dirName="example", nTrials=10, makeSubDirs=FALSE, random=FALSE)}
+
+```
+
+Put all scenarios in the same list then convert to a dataframe. Then create dataframes for output.
+
+```{r echo=F , warning=FALSE}
+
+# read in list of files created in TESAsamSim/runTESAsamSim.R
+simFiles <- list.files(here::here("outputs/simData/runTESA"))
+nsc <- length(simFiles)
+
+# Read the four sim scenarios into a list
+simData <- list()
+
+for(i in 1:nsc){
+  filename <- here::here("outputs/simData/runTESA", simFiles[i])
+  simData[[i]] <- readRDS(filename)$srDatout
+}
+
+nyr <- max(unique(simData[[i]]$year))
+
+
+# filter for CU and rename cols
+for(i in 1:nsc){
+  simData[[i]] <- simData[[i]] %>% 
+    dplyr::filter(CU == 1, year %in% (nyr-50+1):nyr) %>% 
+    mutate() %>% 
+    select(-CU) %>% 
+    rename(byr=year, spwn=spawners, rec=recruits, alpha_true=alpha, beta_true=beta) %>% 
+    mutate(scenario = scenNames[i], alpha=99., beta=99., alpha_se=99., beta_se=99.) %>% # cols for output
+    select(scenario, everything())  #reorder cols
+}
+
+#, alpha=9999., beta=9999., alpha_se=9999., beta_se=9999.
+
+# convert to df with all scenarios
+dlm_Out <- simData[[1]]
+for(i in 2:nsc) dlm_Out <- rbind(dlm_Out, simData[[i]])
+
+# Now make copies to cover our alternative estimation models
+estNames <- c("1_Stat", "2_Alpha_vary", "3_Beta_vary", "4_Alpha_Beta_vary")
+dlm_Out_stat <- dlm_Out_alpha <- dlm_Out_beta <- dlm_Out_alphabeta <- dlm_Out
+
+
+```
+
+Now fit the models, borrowing from Brendan's code.
+
+```{r, echo=FALSE, warnings=FALSE}
+
+iter <- unique(simData[[1]]$iteration)
+nsc <- length(scenNames)
+
+for(j in 1:nsc){
+  for(i in seq_along(iter)){
+    
+    dat <- dlm_Out %>% 
+      dplyr::filter(scenario == scenNames[j], iteration==i) %>% 
+      select(-c(alpha,beta,alpha_se,beta_se)) #need to remove these for fitting
+    
+    # alpha and beta fixed in estimation model
+    dlm_model_stat <- fitDLM(data = dat,
+                        alpha_vary = FALSE,
+                        beta_vary = FALSE)
+    
+    dlm_Out_stat[which(dlm_Out_stat$scenario==scenNames[j] & dlm_Out_stat$iteration==i),10:13] <- dlm_model_stat$results[,10:13]
+ 
+    # alpha varies in estimation model
+    dlm_model_alpha <- fitDLM(data = dat,
+                        alpha_vary = TRUE,
+                        beta_vary = FALSE)
+    
+    dlm_Out_alpha[which(dlm_Out_alpha$scenario==scenNames[j] & dlm_Out_alpha$iteration==i),10:13] <- dlm_model_alpha$results[,10:13]
+    
+    # beta varies in estimation model
+    dlm_model_beta <- fitDLM(data = dat,
+                        alpha_vary = FALSE,
+                        beta_vary = TRUE)
+    
+    dlm_Out_beta[which(dlm_Out_beta$scenario==scenNames[j] & dlm_Out_beta$iteration==i),10:13] <- dlm_model_beta$results[,10:13]
+    
+    # alpha and beta vary in estimation model
+    dlm_model_alphabeta <- fitDLM(data = dat,
+                        alpha_vary = TRUE,
+                        beta_vary = TRUE)
+    
+    dlm_Out_alphabeta[which(dlm_Out_alphabeta$scenario==scenNames[j] & dlm_Out_alphabeta$iteration==i),10:13] <- dlm_model_alphabeta$results[,10:13]
+ 
+  }
+}
+
+# Now append the estimation model name to each dataframe
+dlm_Out_stat <- dlm_Out_stat %>% 
+  mutate(estModel = estNames[1])
+dlm_Out_alpha <- dlm_Out_alpha %>% 
+  mutate(estModel = estNames[2])
+dlm_Out_beta <- dlm_Out_beta %>% 
+  mutate(estModel = estNames[3])
+dlm_Out_alphabeta <- dlm_Out_alphabeta %>% 
+  mutate(estModel = estNames[4])
+
+# Now make one gigantic dataframe (not sure if we want this)
+dlm_out_all_combo <- rbind(dlm_Out_stat, dlm_Out_alpha, dlm_Out_beta,dlm_Out_alphabeta)
+
+
+
+```
+
+So now all the outputs are in one giant dataframe
+
+Get the bias for all combos
+
+```{r echo=FALSE. warnings=FALSE}
+# Now get bias ... adapted from Brendan's code
+pms <- dlm_out_all_combo %>%
+  group_by(scenario,estModel, iteration) %>%
+  dplyr::summarize(
+    alpha_mpb=mean((alpha_true-alpha)/alpha_true)*100,
+    beta_mpb=mean((beta_true-beta)/beta_true)*100) %>%
+  pivot_longer(alpha_mpb:beta_mpb,names_to="parameter",values_to="mpb")
+
+#View(pms)
+
+```
+
+Plot bias. Why is bias in beta so high?? small numbers?
+
+```{r}
+source(here::here("plotOutputs_newfuncs.R"))
+plot_bias_boxplots(pms)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
