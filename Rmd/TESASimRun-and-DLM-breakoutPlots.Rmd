@@ -1,17 +1,17 @@
 ---
-title: "Example TESAsamSim Run and DLM fit"
-author: "Brendan Connors and Carrie Holt. Updated by Luke Warkentin and Robyn Forrest"
+title: "Example fitting and visualizing for simulation scenrios"
+author: "Brendan Connors, Luke Warkentin and Robyn Forrest"
 date: "February 4, 2021"
 output:
   html_document: default
   pdf_document: default
 ---
 
-This document illustrates how to simulate some stock-recruitment data using the `TESAsamSim` R package and then fit a linear state-space model (aka Dynamic Linear model) with potentially time-varying parameters to it. The model is fit via Maximum likelihood followed by Kalman filtering and smoothing using a wrapper for the `dlm` R package (see [here](https://cran.r-project.org/web/packages/dlm/index.html)). The wrapper is based in part on code generously provided by Cody Szuwalski (NOAA). For this illustrative example the simulations are based on the population characteristics of Interior Fraser River coho salmon.
+This document illustrates how to read in (or simulate) some simulated some stock-recruitment data from the `TESAsamSim` R package, fit a linear state-space model (aka Dynamic Linear model) with potentially time-varying parameters to it using a wrapper for the `dlm` R package (see [here](https://cran.r-project.org/web/packages/dlm/index.html)), and then visualize results.  
 
-First, load packages, read in data and set up scenarios
+First, load packages, and read in (or run) simulations.
 
-[Figure out how to do all this with purrr or furrr later]
+[RF: Figure out how to do all this with purrr or furrr later]
 
 ```{r, echo=FALSE, warnings=FALSE, message=FALSE}
 
@@ -40,7 +40,7 @@ scenNames <- unique(simPar$scenario)
 
 ```
 
-Put subset of scenarios in the same list then convert to a dataframe. Then create dataframes for output. Here we are just focusing on six alternative time trends in alpha and/or beta under two rho scenarios.
+Put subset of scenarios in the same list then convert to a dataframe. Then create dataframes for output. Here we are just focusing on six alternative time trends in alpha and/or beta under two rho (autocorrelation in recruitment deviation) scenarios.
 
 ```{r, message=FALSE,  warning=FALSE}
 
@@ -103,7 +103,7 @@ dlm_Out_stat <- dlm_Out_alpha <- dlm_Out_beta <- dlm_Out_alphabeta <- dlm_Out
 
 ```
 
-Now fit the simulated data for each scenario with each of 4 possible DLMs. 
+Now fit the simulated data for each scenario with each of 4 possible Dynamic Linear Models. 
 
 ```{r, message=FALSE,  warning=FALSE}
 
@@ -168,14 +168,14 @@ dlm_Out_alphabeta <- dlm_Out_alphabeta %>%
 
 ```
 
-So now all the outputs are in one giant dataframe.
+Now get all the outputs into one giant dataframe.
 
 ```{r, message=FALSE,  warning=FALSE, results="hide"}
 dlm_out_all_combo <- rbind(dlm_Out_stat, dlm_Out_alpha, dlm_Out_beta, dlm_Out_alphabeta)
 
 ```
 
-Lets calculate bias by parameter and magnitude of rho:
+Next, lets calculate bias by parameter and magnitude of rho.
 
 ```{r, message=FALSE,  warning=FALSE}
 
@@ -188,7 +188,7 @@ pms <- dlm_out_all_combo %>%
 
 ```
 
-And then lets plot it:
+And then plot bias by estimation model, parameter and rho.
 ```{r, message=FALSE,  warning=FALSE}
 # reorder scenarios
 pms$scen <- factor(pms$scen, levels = c("stationary", "stationary_ar","incLinearProd","incLinearProd_ar","incLinearCap",
@@ -243,7 +243,7 @@ ggsave(here("outputs", "simData", "runTESA", "bias-plot.jpeg"),height=6,width=8)
 
 ```
 
-How about a confusion matrix for a subset of scenarios with rho = 0? First we need to calculate type 1 and 2 errors:
+Next let's create a confusion matrix for a subset of scenarios with rho = 0. First we need to calculate type 1 and 2 errors.
  
 ```{r,  message=FALSE,  warning=FALSE}
 conf_scenNames<-c("stationary","incLinearProd","incLinearCap","incLinearProdCap")
@@ -280,7 +280,7 @@ confusion$InfC <- as.factor(confusion$InfC)
 
 ```
 
-Then we can plot:
+Then we can plot.
 
 ```{r, message=FALSE,  warning=FALSE}
 confusionLong <- confusion %>%
@@ -353,7 +353,7 @@ confusion$InfC <- as.factor(confusion$InfC)
 
 ```
 
-Then we can plot:
+And then plot.
 
 ```{r}
 confusionLong <- confusion %>%
