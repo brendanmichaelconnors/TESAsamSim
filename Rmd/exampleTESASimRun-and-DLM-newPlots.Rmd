@@ -176,7 +176,7 @@ allbias <- dlm_out_all_combo %>%
 
 ```
 
-Plot bias. Why is bias in beta so high?? small numbers?
+Plot bias. 
 
 ```{r}
 source(here::here("plotOutputs_newfuncs.R"))
