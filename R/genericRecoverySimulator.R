@@ -239,7 +239,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   # is the productivity scenario stable
   prodStable <- ifelse(prod %in% c("linear", "decline", "increase", "divergent",
                                    "divergentSmall", "oneUp", "oneDown",
-                                   "scalar"),
+                                   "scalar", "regime"),
                    FALSE,
                    TRUE)
 
@@ -271,6 +271,18 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   finalAlpha <- prodScalars * alpha
   trendLength <- simPar$trendLength#3 * gen
   trendAlpha <- (finalAlpha - alpha) / trendLength
+
+  # Create matrix of alphas that correspond to 10-year regimes that iterate between
+  # initial alpha and final alpha
+  runRegime <- function(a1,a2,y)( rep( c(rep(a1,10),rep(a2,10)),
+                                       ceiling(y/20) )[1:y] )
+  regimeAlpha <- mapply(runRegime, alpha, alpha*simPar$prodPpnChange,
+                        rep(simYears,length(alpha)))
+
+
+  # Replaced with mapply to avoid calling another package
+  # purrr::pmap(list(alpha, finalAlpha, rep(50,5)), runRegime)
+
   cuProdTrends <- dplyr::case_when(
     prodScalars < 1 ~ "decline", #== "0.65" ~ "decline",
     prodScalars == "1" ~ "stable",
@@ -281,7 +293,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
   cap <- simPar$capRegime
   capStable <- ifelse(cap %in% c("linear", "decline", "increase",
                                  "divergent", "divergentSmall",
-                                 "oneUp", "oneDown", "scalar"),
+                                 "oneUp", "oneDown", "scalar", "regime"),
                        FALSE,
                        TRUE)
 
@@ -296,12 +308,18 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
     capacityScalars <- rep(simPar$capPpnChange, nCU)
   } else if (cap == "decline" ) {
     capacityScalars <- rep(0.65, nCU)
-  }else if (cap == "increase" ) {
+  } else if (cap == "increase" ) {
     capacityScalars <- rep(1.35, nCU)
   }
 
   finalCapacity <- capacityScalars * capacity
   trendCapacity <- (finalCapacity - capacity) / trendLength
+
+
+  # Create matrix of capacity that corresponds to 10-year regimes that iterate between
+  # initial cap and final cap
+  regimeCap <- mapply(runRegime, capacity, capacity*simPar$capPpnChange,
+                      rep(simYears,length(capacity)))
 
   # Adjust sigma up or down
   sig <- ifelse(model == "ricker" | model=="rickerSurv", ricSig, larSig) * adjSig
@@ -397,6 +415,10 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
     #calculate firstYr here because catch and rec data may differ in length
     firstYr <- min(sapply(recOut, function(x) min(x$yr, na.rm = TRUE)))
   } # end of (!is.null(srDat))
+
+
+  regimeAlpha <- rbind(matrix(NA, nrow=nPrime, ncol=length(alpha)), regimeAlpha)
+  regimeCap <- rbind(matrix(NA, nrow=nPrime, ncol=length(capacity)), regimeCap)
 
   # Extract proportions at age a for each CU (where, a = 2,3,4,5,6)
   ppn2 <- ageStruc[, 1] #proportion at age parameters
@@ -991,26 +1013,48 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
       # Specify alpha
       #In first year, switch from reference alpha used in priming to testing alpha; add trend for 3 generations by default
       if (y > (nPrime + 1)) {
-        if (prodStable == FALSE & y < (nPrime + trendLength + 1)) {
+        if (prod == "linear" & y < (nPrime + trendLength + 1)) {
           alphaMat[y, ] <- alphaMat[y - 1, ] + trendAlpha
-        } else {
+        }
+        if (prod == "linear" & y >= (nPrime + trendLength + 1)) {
+            alphaMat[y, ] <- finalAlpha
+        } #end if prod == linear and inside trendPeriod
+        if (prod == "regime") {
+          alphaMat[y, ] <- regimeAlpha[y, ]
+        } #end if prod == "regime"
+        if (prodStable) {
+          alphaMat[y, ] <- alphaMat[y - 1, ]
+        }
+        if (!prodStable & prod!="linear" & prod!="regime"){
           alphaMat[y, ] <- finalAlpha
-        } #end if prodStable == FALSE and inside trendPeriod
+        }
       } else {
         alphaMat[y, ] <- alphaMat[y - 1, ]
-      } #end if y > (nPrime + 1)
+      }#end if y > (nPrime + 1)
 
       # Specify beta
       #In first year, switch from reference beta ; add trend for 3 generations by default
       if (y > (nPrime + 1)) {
-        if (capStable == FALSE & y < (nPrime + trendLength + 1)) {
+        if (cap == "linear" & y < (nPrime + trendLength + 1)) {
           capMat[y, ] <- capMat[y - 1, ] + trendCapacity
-
           betaMat[y, ] <- 1/capMat[y,]#betaMat[y - 1, ] + trendBeta
-        } else {
+        }
+        if (cap == "linear" & y >= (nPrime + trendLength + 1)) {
           capMat[y,] <- finalCapacity
           betaMat[y, ] <- 1/capMat[y,]#finalBeta
-        } #end if prodStable == FALSE and inside trendPeriod
+        }
+        if (cap == "regime"){
+          capMat[y, ] <- regimeCap[y, ]
+          betaMat[y,] <- 1/capMat[y, ]
+        }
+        if(capStable){
+          capMat[y, ] <- capMat[y - 1, ]
+          betaMat[y, ] <- 1/capMat[y,]#
+        }
+        if(!capStable & cap!="linear" & cap!="regime"){
+          capMat[y, ] <- capMat[y - 1, ]
+          betaMat[y, ] <- 1/capMat[y,]#
+        }
       } else {
         capMat[y, ] <- capMat[y - 1, ]
         betaMat[y, ] <- 1/capMat[y,]#betaMat[y - 1, ]
