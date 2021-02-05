@@ -161,6 +161,10 @@ Get the bias for all combos
 ```{r echo=FALSE. warnings=FALSE}
 # Now get bias ... adapted from Brendan's code
 
+# change sign of beta_true
+dlm_out_all_combo$beta_true <- -dlm_out_all_combo$beta_true
+
+
 allbias <- dlm_out_all_combo %>%
   group_by(scenario,estModel, iteration) %>%
   dplyr::summarize(
