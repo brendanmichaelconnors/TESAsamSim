@@ -37,8 +37,8 @@ fitDLM <- function(data = bt,
   # 3. specify the model based on variance structure
   build_mod <- function(parm)
   {
-    mod$V <- exp(parm[1])
-    if(alpha_vary==TRUE & beta_vary==FALSE){mod$W[1,1]=exp(parm[2]); mod$W[2,2]=0}
+    mod$V <- exp(parm[1]) # observation error variance
+    if(alpha_vary==TRUE & beta_vary==FALSE){mod$W[1,1]=exp(parm[2]); mod$W[2,2]=0} # evolution (process error) variances
     if(alpha_vary==FALSE & beta_vary==TRUE){mod$W[1,1]=0; mod$W[2,2]=exp(parm[2])}
     if(alpha_vary==TRUE & beta_vary==TRUE){mod$W[1,1]=exp(parm[2]); mod$W[2,2]=exp(parm[3])}
     return(mod)
@@ -65,10 +65,11 @@ fitDLM <- function(data = bt,
   alpha_se <- sqrt(array(as.numeric(unlist(dlmSvd2var(outsSmooth$U.S, outsSmooth$D.S))), dim=c( 2, 2,length(lnRS)+1)))[1,1,-1]
   beta_se <- sqrt(array(as.numeric(unlist(dlmSvd2var(outsSmooth$U.S, outsSmooth$D.S))), dim=c( 2, 2,length(lnRS)+1)))[2,2,-1]
   AICc	<- 2*lls + 2*dlmPars +(2*dlmPars*(dlmPars+1)/(length(data$rec)-dlmPars-1))
+  BIC <-BIC <- 2*lls + dlmPars*log((length(data$rec)))
 
   # 10. output results
   results <- cbind(data,alpha, beta,alpha_se,beta_se)
-  output <- list(results=results,AICc=AICc)
+  output <- list(results=results,AICc=AICc, BIC=BIC)
 
 }
 
@@ -122,6 +123,24 @@ plotDLM <- function(dlm_model = dlm_model){
           legend.text = element_text(size = 6),
           legend.title = element_text(size = 7),
           plot.margin=unit(c(0.5,0.5,0.5,0.5), units="lines"))
+
+
+  theme(strip.text = element_text(size=6),
+        axis.title = element_text(size=9),
+        axis.text = element_text(size=6),
+
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+
+
+
+
+
+
+
+
+
+
 
   # next plot true and estimate alpha
 
