@@ -41,7 +41,10 @@ alpha_bias <- pbias %>%
     ylab("Mean % bias") +
     ggtitle("alpha")+
     theme(legend.position = "none")+
-    theme_bw()
+    theme_bw()+
+   theme(axis.text=element_text(size=14),
+         axis.title=element_text(size=16),
+         title=element_text(size=16, face="bold"))
  beta_bias <- pbias %>%
    as.data.frame() %>%
    dplyr::filter(parameter == "beta_mpb") %>%
@@ -51,7 +54,9 @@ alpha_bias <- pbias %>%
    xlab("Scenario") +
    ylab("Mean % bias")+
    ggtitle("beta")+
-   theme_bw()
+   theme_bw()+theme(axis.text=element_text(size=14),
+                    axis.title=element_text(size=16),
+                    title=element_text(size=16, face="bold"))
 
  cowplot::plot_grid(alpha_bias, beta_bias, nrow=2)
 

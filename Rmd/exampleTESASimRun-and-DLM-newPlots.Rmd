@@ -92,6 +92,7 @@ nsc <- length(scenNames)
 
 #check to see if models have already been run (this file is in the Google drive)
 dlm_filename <- here::here("outputs/diagnostics",   "model_estimates_all_combos.csv")
+
 if(file.exists(dlm_filename)){
   dlm_out_all_combo <- readr::read_csv(dlm_filename)
 } else{
@@ -179,9 +180,41 @@ source(here::here("plotOutputs_newfuncs.R"))
 
 # Subset the scenarios and make box plots
 plotBias <- allbias %>% 
-  
+  filter(scenario %in% scenNames[1:5])
+png(here::here("outputs/diagnostics","Bias_boxplots_Sc1-5.png"),  width = 960, height = 720)
+  plot_bias_boxplots(plotBias)
+dev.off()
 
-plot_bias_boxplots(pms)
+plotBias <- allbias %>% 
+  filter(scenario %in% scenNames[6:10])
+png(here::here("outputs/diagnostics","Bias_boxplots_Sc6-10.png"), width = 960, height = 720 )
+  plot_bias_boxplots(plotBias)
+dev.off()
+
+plotBias <- allbias %>% 
+  filter(scenario %in% scenNames[11:15])
+png(here::here("outputs/diagnostics","Bias_boxplots_Sc11-15.png"), width = 960, height = 720 )
+  plot_bias_boxplots(plotBias)
+dev.off()
+
+plotBias <- allbias %>% 
+  filter(scenario %in% scenNames[16:20])
+png(here::here("outputs/diagnostics","Bias_boxplots_Sc16-20.png"), width = 960, height = 720 )
+  plot_bias_boxplots(plotBias)
+dev.off()
+
+plotBias <- allbias %>% 
+  filter(scenario %in% scenNames[21:25])
+png(here::here("outputs/diagnostics","Bias_boxplots_Sc21-25.png"), width = 960, height = 720 )
+  plot_bias_boxplots(plotBias)
+dev.off()
+
+plotBias <- allbias %>% 
+  filter(scenario %in% scenNames[26:31])
+png(here::here("outputs/diagnostics","Bias_boxplots_Sc26-31.png"), width = 960, height = 720 )
+  plot_bias_boxplots(plotBias)
+dev.off()
+
 
 ```
 
