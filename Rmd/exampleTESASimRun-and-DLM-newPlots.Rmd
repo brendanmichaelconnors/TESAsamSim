@@ -171,7 +171,7 @@ Get the bias for all combos
 # Now get bias ... adapted from Brendan's code
 
 # Can just get file and start from here
-pms <- readr::read_csv(here::here("outputs/diagnostics",   "model_estimates_all_combos.csv"))
+dlm_out_all_combo <- readr::read_csv(here::here("outputs/diagnostics",   "model_estimates_all_combos.csv"))
 
 pms <- dlm_out_all_combo %>%
   group_by(scenario,estModel, iteration) %>%
@@ -190,7 +190,7 @@ Plot bias. Why is bias in beta so high?? small numbers?
 source(here::here("plotOutputs_newfuncs.R"))
 
 # Subset the scenarios and make box plots
-
+plot
 
 plot_bias_boxplots(pms)
 
