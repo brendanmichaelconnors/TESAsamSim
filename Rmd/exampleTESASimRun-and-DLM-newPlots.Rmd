@@ -159,7 +159,7 @@ dlm_Out_alphabeta <- dlm_Out_alphabeta %>%
 # Now make one gigantic dataframe (not sure if we want this)
 dlm_out_all_combo <- rbind(dlm_Out_stat, dlm_Out_alpha, dlm_Out_beta,dlm_Out_alphabeta)
 
-
+readr::write_csv(dlm_out_all_combo, here::here("outputs/diagnostics",   "model_estimates_all_combos.csv"))
 
 ```
 
@@ -169,6 +169,10 @@ Get the bias for all combos
 
 ```{r echo=FALSE. warnings=FALSE}
 # Now get bias ... adapted from Brendan's code
+
+# Can just get file and start from here
+pms <- readr::read_csv(here::here("outputs/diagnostics",   "model_estimates_all_combos.csv"))
+
 pms <- dlm_out_all_combo %>%
   group_by(scenario,estModel, iteration) %>%
   dplyr::summarize(
@@ -184,6 +188,10 @@ Plot bias. Why is bias in beta so high?? small numbers?
 
 ```{r}
 source(here::here("plotOutputs_newfuncs.R"))
+
+# Subset the scenarios and make box plots
+
+
 plot_bias_boxplots(pms)
 
 ```
