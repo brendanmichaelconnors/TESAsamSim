@@ -28,6 +28,12 @@ lapply(listOfPackages, require, character.only = TRUE)
 # load wrapper function to fit dynamic linear models
 source(here("dlm-wrapper.R"))
 
+simPar <- read.csv(here("data", "IFCohoPars",
+                          "SimPar.csv"),
+                        stringsAsFactors = F)
+ 
+scenNames <- unique(simPar$scenario)
+
 #if you need to get the sim files run this code (takes 15 mins)
 #source("runTESAsamSim.R")
 
@@ -42,7 +48,7 @@ Put all scenarios in the same list then convert to a dataframe. Then create data
 simFiles <- list.files(here::here("outputs/simData/runTESA"))
 nsc <- length(simFiles)
 
-# Read the four sim scenarios into a list
+# Read the  sim scenarios into a list
 simData <- list()
 
 for(i in 1:nsc){
