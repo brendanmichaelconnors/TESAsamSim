@@ -219,7 +219,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
 
   # Adjust sigma (Ricker only) following Holt and Folkes 2015 if a
   # transformation term is present and TRUE
-  if (is.null(simPar$arSigTransform) == FALSE & simPar$arSigTransform == TRUE) {
+    if (is.null(simPar$arSigTransform) == FALSE & simPar$arSigTransform == TRUE) {
     ricSig <- ricSig^2 * (1 - rho^2)
   }
 
@@ -964,7 +964,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
     infillS <- infill(S[1:nPrime, ])
 
     #Default recruitment cap reflecting observed abundance (not quantiles)
-    recCap <- 2 * apply(recBY[1:nPrime, ], 2, function(x) max(x, na.rm = TRUE))
+    recCap <- 3 * apply(recBY[1:nPrime, ], 2, function(x) max(x, na.rm = TRUE))
 
 
     for (y in (nPrime - 12):nPrime) {  # Note that BMs and aggregate PMs are not recalculated after interpolation
@@ -1818,10 +1818,11 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
       dimnames(plotTrialDat)[[3]] <- varNames
 
       # Figure settings
-      fileName <- ifelse(variableCU == "TRUE",
-                         paste(cuNameOM, cuNameMP, "singleTrialFig.pdf",
-                               sep = "_"),
-                         paste(nameOM, nameMP, "singleTrialFig.pdf", sep = "_"))
+      # fileName <- ifelse(variableCU == "TRUE",
+      #                    paste(cuNameOM, cuNameMP, "singleTrialFig.pdf",
+      #                          sep = "_"),
+      #                    paste(nameOM, nameMP, "singleTrialFig.pdf", sep = "_"))
+      fileName <- paste(simPar$scenario, ".pdf", sep = "")
       pdf(file = paste(here("outputs/diagnostics", dirPath, fileName),
                        sep = "/"), height = 6, width = 7)
       if (exists("larB")) { # if larkin terms are present they need to be passed
@@ -2234,8 +2235,7 @@ genericRecoverySim <- function(simPar, cuPar, catchDat=NULL, srDat=NULL,
     names(srDatoutList) <- c("srDatout", "nameOM", "simYears", "nTrials", "ricSig", "rho",
                              "canER", "obsSig", "obsMixCatchSig", "prod", "prodScalars",
                              "cap", "capacityScalars", "trendLength")
-    fileName <- ifelse(variableCU == "TRUE", paste(cuNameOM, cuNameMP, "CUsrDat.RData", sep = "_"),
-                       paste(nameOM, nameMP, "CUsrDat.RData", sep = "_"))
+    fileName <- paste(simPar$scenario, ".RData", sep = "")
 
     saveRDS(srDatoutList, file = paste(here("outputs/simData"), dirPath, fileName,
                                        sep = "/"), version=3)
