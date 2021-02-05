@@ -28,33 +28,9 @@ lapply(listOfPackages, require, character.only = TRUE)
 # load wrapper function to fit dynamic linear models
 source(here("dlm-wrapper.R"))
 
-# ## Load relevant input data
-# # CU-specific parameters
-# cuPar <- read.csv(here("data", "IFCohoPars", "CUpars.csv"),
-#                   stringsAsFactors=F)
-# 
-# # Stock-recruit and catch data that are used to populate the simulation priming/conditioning period
-# srDat <- read.csv(here("data", "IFCohoPars", "cohoRecDatTrim.csv"),
-#                   stringsAsFactors=F)
-# 
-# simPar <- read.csv(here("data", "IFCohoPars",
-#                          "SimPar.csv"),
-#                        stringsAsFactors = F)
-# 
-# # Directory where simulated data will be saved
-# scenNames <- unique(simPar$scenario)
-# 
-# #HACK to add numbers to names so they sort in plots. Could probably use some fancy factor approach
-# for(i in 1:length(scenNames)) scenNames[i] <- paste0(i,"_", scenNames[i])
-# 
-# 
-# dirNames <- sapply(scenNames, function(x) paste(x, unique(simPar$species),
-#                                                 sep = "_"))
-# # loop through each scenario and simulate data
-# for (i in 1:4){
-#  genericRecoverySim(simPar=simPar[i,], cuPar=cuPar,  srDat=srDat,
-#             variableCU=FALSE, ricPars=NULL, #ricPars,  #cuCustomCorrMat = cuCustomCorrMat,
-#             dirName="example", nTrials=10, makeSubDirs=FALSE, random=FALSE)}
+#if you need to get the sim files run this code (takes 15 mins)
+#source("runTESAsamSim.R")
+
 
 ```
 
@@ -108,45 +84,50 @@ Now fit the models, borrowing from Brendan's code.
 iter <- unique(simData[[1]]$iteration)
 nsc <- length(scenNames)
 
-for(j in 1:nsc){
-  for(i in seq_along(iter)){
-    
-    dat <- dlm_Out %>% 
-      dplyr::filter(scenario == scenNames[j], iteration==i) %>% 
-      select(-c(alpha,beta,alpha_se,beta_se)) #need to remove these for fitting
-    
-    # alpha and beta fixed in estimation model
-    dlm_model_stat <- fitDLM(data = dat,
-                        alpha_vary = FALSE,
-                        beta_vary = FALSE)
-    
-    dlm_Out_stat[which(dlm_Out_stat$scenario==scenNames[j] & dlm_Out_stat$iteration==i),10:13] <- dlm_model_stat$results[,10:13]
- 
-    # alpha varies in estimation model
-    dlm_model_alpha <- fitDLM(data = dat,
-                        alpha_vary = TRUE,
-                        beta_vary = FALSE)
-    
-    dlm_Out_alpha[which(dlm_Out_alpha$scenario==scenNames[j] & dlm_Out_alpha$iteration==i),10:13] <- dlm_model_alpha$results[,10:13]
-    
-    # beta varies in estimation model
-    dlm_model_beta <- fitDLM(data = dat,
-                        alpha_vary = FALSE,
-                        beta_vary = TRUE)
-    
-    dlm_Out_beta[which(dlm_Out_beta$scenario==scenNames[j] & dlm_Out_beta$iteration==i),10:13] <- dlm_model_beta$results[,10:13]
-    
-    # alpha and beta vary in estimation model
-    dlm_model_alphabeta <- fitDLM(data = dat,
-                        alpha_vary = TRUE,
-                        beta_vary = TRUE)
-    
-    dlm_Out_alphabeta[which(dlm_Out_alphabeta$scenario==scenNames[j] & dlm_Out_alphabeta$iteration==i),10:13] <- dlm_model_alphabeta$results[,10:13]
- 
-  }
-}
-
-# Now append the estimation model name to each dataframe
+#check to see if models have already been run (this file is in the Google drive)
+dlm_filename <- here::here("outputs/diagnostics",   "model_estimates_all_combos.csv")
+if(file.exists(dlm_filename)){
+  dlm_out_all_combo <- readr::read_csv(dlm_filename)
+} else{
+  for(j in 1:nsc){
+    for(i in seq_along(iter)){
+      
+      dat <- dlm_Out %>% 
+        dplyr::filter(scenario == scenNames[j], iteration==i) %>% 
+        select(-c(alpha,beta,alpha_se,beta_se)) #need to remove these for fitting
+      
+      # alpha and beta fixed in estimation model
+      dlm_model_stat <- fitDLM(data = dat,
+                          alpha_vary = FALSE,
+                          beta_vary = FALSE)
+      
+      dlm_Out_stat[which(dlm_Out_stat$scenario==scenNames[j] & dlm_Out_stat$iteration==i),10:13] <- dlm_model_stat$results[,10:13]
+   
+      # alpha varies in estimation model
+      dlm_model_alpha <- fitDLM(data = dat,
+                          alpha_vary = TRUE,
+                          beta_vary = FALSE)
+      
+      dlm_Out_alpha[which(dlm_Out_alpha$scenario==scenNames[j] & dlm_Out_alpha$iteration==i),10:13] <- dlm_model_alpha$results[,10:13]
+      
+      # beta varies in estimation model
+      dlm_model_beta <- fitDLM(data = dat,
+                          alpha_vary = FALSE,
+                          beta_vary = TRUE)
+      
+      dlm_Out_beta[which(dlm_Out_beta$scenario==scenNames[j] & dlm_Out_beta$iteration==i),10:13] <- dlm_model_beta$results[,10:13]
+      
+      # alpha and beta vary in estimation model
+      dlm_model_alphabeta <- fitDLM(data = dat,
+                          alpha_vary = TRUE,
+                          beta_vary = TRUE)
+      
+      dlm_Out_alphabeta[which(dlm_Out_alphabeta$scenario==scenNames[j] & dlm_Out_alphabeta$iteration==i),10:13] <- dlm_model_alphabeta$results[,10:13]
+   
+    }#end j
+  }# end i
+  
+  # Now append the estimation model name to each dataframe
 dlm_Out_stat <- dlm_Out_stat %>% 
   mutate(estModel = estNames[1])
 dlm_Out_alpha <- dlm_Out_alpha %>% 
@@ -161,6 +142,9 @@ dlm_out_all_combo <- rbind(dlm_Out_stat, dlm_Out_alpha, dlm_Out_beta,dlm_Out_alp
 
 readr::write_csv(dlm_out_all_combo, here::here("outputs/diagnostics",   "model_estimates_all_combos.csv"))
 
+}# end if
+
+
 ```
 
 So now all the outputs are in one giant dataframe
@@ -170,17 +154,14 @@ Get the bias for all combos
 ```{r echo=FALSE. warnings=FALSE}
 # Now get bias ... adapted from Brendan's code
 
-# Can just get file and start from here
-dlm_out_all_combo <- readr::read_csv(here::here("outputs/diagnostics",   "model_estimates_all_combos.csv"))
-
-pms <- dlm_out_all_combo %>%
+allbias <- dlm_out_all_combo %>%
   group_by(scenario,estModel, iteration) %>%
   dplyr::summarize(
     alpha_mpb=mean((alpha_true-alpha)/alpha_true)*100,
     beta_mpb=mean((beta_true-beta)/beta_true)*100) %>%
   pivot_longer(alpha_mpb:beta_mpb,names_to="parameter",values_to="mpb")
 
-#View(pms)
+# View(allbias)
 
 ```
 
@@ -189,8 +170,10 @@ Plot bias. Why is bias in beta so high?? small numbers?
 ```{r}
 source(here::here("plotOutputs_newfuncs.R"))
 
+
 # Subset the scenarios and make box plots
-plot
+plotBias <- allbias %>% 
+  
 
 plot_bias_boxplots(pms)
 
