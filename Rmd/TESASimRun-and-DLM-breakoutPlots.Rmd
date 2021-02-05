@@ -1,0 +1,389 @@
+---
+title: "Example TESAsamSim Run and DLM fit"
+author: "Brendan Connors and Carrie Holt. Updated by Luke Warkentin and Robyn Forrest"
+date: "February 4, 2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+This document illustrates how to simulate some stock-recruitment data using the `TESAsamSim` R package and then fit a linear state-space model (aka Dynamic Linear model) with potentially time-varying parameters to it. The model is fit via Maximum likelihood followed by Kalman filtering and smoothing using a wrapper for the `dlm` R package (see [here](https://cran.r-project.org/web/packages/dlm/index.html)). The wrapper is based in part on code generously provided by Cody Szuwalski (NOAA). For this illustrative example the simulations are based on the population characteristics of Interior Fraser River coho salmon.
+
+First, load packages, read in data and set up scenarios
+
+[Figure out how to do all this with purrr or furrr later]
+
+```{r, echo=FALSE, warnings=FALSE, message=FALSE}
+
+## Check if necessary packages are available and install if necessary
+listOfPackages <- c("here", "parallel", "doParallel", "foreach", 
+                    "tidyverse", "tictoc", "TESAsamSim")
+newPackages <- listOfPackages[!(listOfPackages %in% 
+                                  installed.packages()[ , "Package"])]
+if (length(newPackages)) {
+  install.packages(newPackages)
+}
+lapply(listOfPackages, require, character.only = TRUE)
+
+# load wrapper function to fit dynamic linear models
+source(here("dlm-wrapper.R"))
+
+simPar <- read.csv(here("data", "IFCohoPars",
+                          "SimPar.csv"),
+                        stringsAsFactors = F)
+ 
+scenNames <- unique(simPar$scenario)
+
+#if you need to get the sim files run this code (takes 15 mins)
+#source("runTESAsamSim.R")
+
+
+```
+
+Put subset of scenarios in the same list then convert to a dataframe. Then create dataframes for output. Here we are just focusing on six alternative time trends in alpha and/or beta under two rho scenarios.
+
+```{r, message=FALSE,  warning=FALSE}
+
+simData <- list()
+simData[[1]] <- readRDS(here("outputs", "simData", "runTESA",
+                             "stationary.RData"))$srDatout
+simData[[2]] <- readRDS(here("outputs", "simData", "runTESA",
+                             "incLinearProd.RData"))$srDatout
+simData[[3]] <- readRDS(here("outputs", "simData", "runTESA",
+                             "incLinearCap.RData"))$srDatout
+simData[[4]] <- readRDS(here("outputs", "simData", "runTESA",
+                             "incLinearProdCap.RData"))$srDatout
+simData[[5]] <- readRDS(here("outputs", "simData", "runTESA",
+                             "decLinearProd.RData"))$srDatout
+simData[[6]] <- readRDS(here("outputs", "simData", "runTESA",
+                             "decLinearCap.RData"))$srDatout
+simData[[7]] <- readRDS(here("outputs", "simData", "runTESA",
+                             "decLinearProdCap.RData"))$srDatout
+simData[[8]] <- readRDS(here("outputs", "simData", "runTESA",
+                             "stationary_ar.RData"))$srDatout
+simData[[9]] <- readRDS(here("outputs", "simData", "runTESA",
+                             "incLinearProd_ar.RData"))$srDatout
+simData[[10]] <- readRDS(here("outputs", "simData", "runTESA",
+                             "incLinearCap_ar.RData"))$srDatout
+simData[[11]] <- readRDS(here("outputs", "simData", "runTESA",
+                             "incLinearProdCap_ar.RData"))$srDatout
+simData[[12]] <- readRDS(here("outputs", "simData", "runTESA",
+                             "decLinearProd_ar.RData"))$srDatout
+simData[[13]] <- readRDS(here("outputs", "simData", "runTESA",
+                             "decLinearCap_ar.RData"))$srDatout
+simData[[14]] <- readRDS(here("outputs", "simData", "runTESA",
+                             "decLinearProdCap_ar.RData"))$srDatout
+
+# scenario IDs for subset we are working with
+trunc_scenNames <- c("stationary","incLinearProd","incLinearCap","incLinearProdCap","decLinearProd","decLinearCap","decLinearProdCap","stationary_ar",
+                     "incLinearProd_ar", "incLinearCap_ar","incLinearProdCap_ar","decLinearProd_ar","decLinearCap_ar","decLinearProdCap_ar")
+
+# filter for CU and rename cols
+for(i in 1:14){
+  simData[[i]] <- simData[[i]] %>%
+    dplyr::filter(CU == 1) %>%
+    mutate() %>%
+    select(-CU) %>%
+    rename(byr=year, spwn=spawners, rec=recruits, alpha_true=alpha, beta_true=beta) %>%
+    mutate(scen = trunc_scenNames[i], alpha=99., beta=99., alpha_se=99., beta_se=99.) %>% # cols for output
+    select(scen, everything())  #reorder cols
+}
+
+# convert to df with all scenarios
+dlm_Out <- simData[[1]]
+for(i in 2:14) dlm_Out <- rbind(dlm_Out, simData[[i]])
+
+# Now make copies to cover our alternative scenarios
+dlm_Out <- dlm_Out %>%
+  filter(byr>17)
+estNames <- c("1_Stat", "2_Alpha_vary", "3_Beta_vary", "4_Alpha_Beta_vary")
+dlm_Out$AIC <- 9999
+dlm_Out$BIC <- 9999
+dlm_Out_stat <- dlm_Out_alpha <- dlm_Out_beta <- dlm_Out_alphabeta <- dlm_Out
+
+```
+
+Now fit the simulated data for each scenario with each of 4 possible DLMs. 
+
+```{r, message=FALSE,  warning=FALSE}
+
+iter <- unique(simData[[i]]$iteration)
+nsc <- length(trunc_scenNames)
+for(j in 1:nsc){
+  for(i in seq_along(iter)){
+
+    dat <- dlm_Out %>%
+      dplyr::filter(scen == trunc_scenNames[j], iteration==i) %>%
+      select(-c(alpha,beta,alpha_se,beta_se)) #need to remove these for fitting
+
+    # alpha and beta fixed in estimation model
+    dlm_model_stat <- fitDLM(data = dat,
+                             alpha_vary = FALSE,
+                             beta_vary = FALSE)
+
+    dlm_Out_stat[which(dlm_Out_stat$scen==trunc_scenNames[j] & dlm_Out_stat$iteration==i),10:13] <- dlm_model_stat$results[,12:15]
+    dlm_Out_stat[which(dlm_Out_stat$scen==trunc_scenNames[j] & dlm_Out_stat$iteration==i),14] <- dlm_model_stat$AICc
+    dlm_Out_stat[which(dlm_Out_stat$scen==trunc_scenNames[j] & dlm_Out_stat$iteration==i),15] <- dlm_model_stat$BIC
+
+    # alpha varies in estimation model
+    dlm_model_alpha <- fitDLM(data = dat,
+                              alpha_vary = TRUE,
+                              beta_vary = FALSE)
+
+    dlm_Out_alpha[which(dlm_Out_alpha$scen==trunc_scenNames[j] & dlm_Out_alpha$iteration==i),10:13] <- dlm_model_alpha$results[,12:15]
+    dlm_Out_alpha[which(dlm_Out_stat$scen==trunc_scenNames[j] & dlm_Out_alpha$iteration==i),14] <- dlm_model_alpha$AICc
+    dlm_Out_alpha[which(dlm_Out_stat$scen==trunc_scenNames[j] & dlm_Out_alpha$iteration==i),15] <- dlm_model_alpha$BIC
+
+    # beta varies in estimation model
+    dlm_model_beta <- fitDLM(data = dat,
+                             alpha_vary = FALSE,
+                             beta_vary = TRUE)
+
+    dlm_Out_beta[which(dlm_Out_beta$scen==trunc_scenNames[j] & dlm_Out_beta$iteration==i),10:13] <- dlm_model_beta$results[,12:15]
+    dlm_Out_beta[which(dlm_Out_beta$scen==trunc_scenNames[j] & dlm_Out_beta$iteration==i),14] <- dlm_model_beta$AICc
+    dlm_Out_beta[which(dlm_Out_beta$scen==trunc_scenNames[j] & dlm_Out_beta$iteration==i),15] <- dlm_model_beta$BIC
+
+    # alpha and beta vary in estimation model
+    dlm_model_alphabeta <- fitDLM(data = dat,
+                                  alpha_vary = TRUE,
+                                  beta_vary = TRUE)
+
+    dlm_Out_alphabeta[which(dlm_Out_alphabeta$scen==trunc_scenNames[j] & dlm_Out_alphabeta$iteration==i),10:13] <- dlm_model_alphabeta$results[,12:15]
+    dlm_Out_alphabeta[which(dlm_Out_alphabeta$scen==trunc_scenNames[j] & dlm_Out_alphabeta$iteration==i),14] <- dlm_model_alphabeta$AICc
+    dlm_Out_alphabeta[which(dlm_Out_alphabeta$scen==trunc_scenNames[j] & dlm_Out_alphabeta$iteration==i),15] <- dlm_model_alphabeta$BIC
+
+  }
+}
+
+
+# Now append the estimation model name to each dataframe
+dlm_Out_stat <- dlm_Out_stat %>%
+  mutate(estModel = estNames[1])
+dlm_Out_alpha <- dlm_Out_alpha %>%
+  mutate(estModel = estNames[2])
+dlm_Out_beta <- dlm_Out_beta %>%
+  mutate(estModel = estNames[3])
+dlm_Out_alphabeta <- dlm_Out_alphabeta %>%
+  mutate(estModel = estNames[4])
+
+```
+
+So now all the outputs are in one giant dataframe.
+
+```{r, message=FALSE,  warning=FALSE, results="hide"}
+dlm_out_all_combo <- rbind(dlm_Out_stat, dlm_Out_alpha, dlm_Out_beta, dlm_Out_alphabeta)
+
+```
+
+Lets calculate bias by parameter and magnitude of rho:
+
+```{r, message=FALSE,  warning=FALSE}
+
+pms <- dlm_out_all_combo %>%
+  group_by(scen,estModel, iteration) %>%
+  dplyr::summarize(
+    alpha_mpb=mean((alpha_true-alpha)/alpha_true)*100,
+    beta_mpb=mean((beta_true-(abs(beta)))/beta_true)*100) %>%
+  pivot_longer(alpha_mpb:beta_mpb,names_to="parameter",values_to="mpb")
+
+```
+
+And then lets plot it:
+```{r, message=FALSE,  warning=FALSE}
+# reorder scenarios
+pms$scen <- factor(pms$scen, levels = c("stationary", "stationary_ar","incLinearProd","incLinearProd_ar","incLinearCap",
+                                        "incLinearCap_ar", "incLinearProdCap","incLinearProdCap_ar","decLinearProd",
+                                        "decLinearProd_ar","decLinearCap","decLinearCap_ar","decLinearProdCap", "decLinearProdCap_ar"))
+
+# rename some variables for plotting
+pms_rho <- pms %>%
+  mutate(rho=case_when(scen=="stationary"~"rho = 0",
+                       scen=="incLinearProd"~"rho = 0",
+                       scen=="incLinearCap"~"rho = 0",
+                       scen=="incLinearProdCap"~"rho = 0",
+                       scen=="decLinearProd"~"rho = 0",
+                       scen=="decLinearCap"~"rho = 0",
+                       scen=="decLinearProdCap"~"rho = 0",
+                       scen=="stationary_ar"~"rho = 0.4",
+                       scen=="incLinearProd_ar"~"rho = 0.4",
+                       scen=="incLinearCap_ar"~"rho = 0.4",
+                       scen=="incLinearProdCap_ar"~"rho = 0.4",
+                       scen=="decLinearProd_ar"~"rho = 0.4",
+                       scen=="decLinearCap_ar"~"rho = 0.4",
+                       scen=="decLinearProdCap_ar"~"rho = 0.4"))%>%
+  mutate(scenMer=case_when(scen=="stationary"~"stationary",
+                           scen=="incLinearProd"~"incLinearProd",
+                           scen=="incLinearCap"~"incLinearCap",
+                           scen=="incLinearProdCap"~"incLinearProdCap",
+                           scen=="decLinearProd"~"decLinearProd",
+                           scen=="decLinearCap"~"decLinearCap",
+                           scen=="decLinearProdCap"~"decLinearProdCap",
+                           scen=="stationary_ar"~"stationary",
+                           scen=="incLinearProd_ar"~"incLinearProd",
+                           scen=="incLinearCap_ar"~"incLinearCap",
+                           scen=="incLinearProdCap_ar"~"incLinearProdCap",
+                           scen=="decLinearProd_ar"~"decLinearProd",
+                           scen=="decLinearCap_ar"~"decLinearCap",
+                           scen=="decLinearProdCap_ar"~"decLinearProdCap")) %>%
+  mutate(parameter2=case_when(parameter=="alpha_mpb"~"alpha",
+                              parameter=="beta_mpb"~"beta"))
+
+ggplot(data=pms_rho ,aes(x=scenMer, y=mpb, fill=estModel))+
+  geom_boxplot(outlier.shape = NA)+
+  xlab("Scenario") +
+  ylab("Mean % bias") +
+  coord_cartesian(ylim=c(-100,100))+
+  scale_fill_viridis_d(labels=c("Stationary", "Alpha", "Beta", "Alpha & Beta"),name="Estimation\n model")+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=45, hjust=1))+
+  geom_hline(yintercept=0, linetype="dashed", color = "red")+
+  facet_grid(rho~parameter2)
+
+ggsave(here("outputs", "simData", "runTESA", "bias-plot.jpeg"),height=6,width=8)
+
+```
+
+How about a confusion matrix for a subset of scenarios with rho = 0? First we need to calculate type 1 and 2 errors:
+ 
+```{r,  message=FALSE,  warning=FALSE}
+conf_scenNames<-c("stationary","incLinearProd","incLinearCap","incLinearProdCap")
+confusionOut <-dlm_out_all_combo %>%
+  filter(scen==conf_scenNames)%>%
+  group_by(scen,iteration,estModel)%>%
+  filter(row_number()==1)
+
+confusion<-matrix(0,400,6)
+confusion<-as.data.frame(confusion)
+confusion[,1]<-rep(unique(confusionOut$scen),each=100)
+confusion[,2]<-rep(1:100,times=4)
+colnames(confusion)<-c("scenario","MC","stationary","alpha","beta","alphabeta")
+colnames(confusion)<-c("scenario","MC","stationary","alpha","beta","alphabeta")
+confusionAIC <- confusion
+confusionBIC <- confusion
+
+  for(j in 1:4){
+    for(i in unique(confusionOut$iteration)){
+      AIC <- confusionOut[which(confusionOut$scen==conf_scenNames[j] & confusionOut$iteration==i),14]
+      best_mod_AICc <- which.min(unlist(AIC))[1]
+      BIC <- confusionOut[which(confusionOut$scen==conf_scenNames[j] & confusionOut$iteration==i),15]
+      best_mod_BIC <- which.min(unlist(BIC))
+      confusionAIC[which(confusionAIC$scen==conf_scenNames[j]& confusionAIC$MC==i),2+best_mod_AICc]<-1
+      confusionBIC[which(confusionBIC$scen==conf_scenNames[j] & confusionBIC$MC==i),2+best_mod_BIC]<-1
+    }
+  }
+
+confusionAIC$InfC <- rep("AIC",dim(confusionAIC)[1])
+confusionBIC$InfC <- rep("BIC",dim(confusionBIC)[1])
+confusion <- rbind(confusionAIC, confusionBIC)
+confusion$InfC <- as.factor(confusion$InfC)
+
+
+```
+
+Then we can plot:
+
+```{r, message=FALSE,  warning=FALSE}
+confusionLong <- confusion %>%
+  group_by(InfC,scenario) %>%
+  dplyr::summarize(
+    pStation=sum(stationary)/100,
+    pAlpha=sum(alpha)/100,
+    pBeta=sum(beta)/100,
+    pAlphaBeta=sum(alphabeta)/100) %>%
+  pivot_longer(pStation:pAlphaBeta,names_to="estimated",values_to="pMC") %>%
+  mutate(trueNum=case_when(scenario=="stationary"~1,
+                           scenario=="incLinearProd"~2,
+                           scenario=="incLinearCap"~3,
+                           scenario=="incLinearProdCap"~4)) %>%
+  mutate(estNum=case_when(estimated=="pStation"~1,
+                          estimated=="pAlpha"~2,
+                          estimated=="pBeta"~3,
+                          estimated=="pAlphaBeta"~4))
+
+ggplot(data=confusionLong,aes(x=trueNum, y=estNum, fill=pMC))+
+  geom_tile(aes(fill = pMC))+
+  scale_fill_viridis_c(limits=c(0,1), name="Proportion\n of trials")+
+  facet_wrap(~InfC)+
+  xlab("True") +
+  ylab("Estimated") +
+  geom_text(aes(label = round(pMC, 2)), size = 3, color="white")+
+  scale_x_continuous(labels=c("Stationary", "Alpha vary", "Beta vary", "Both vary"), breaks=c(1,2,3,4))+
+  scale_y_continuous(labels=c("Stationary", "Alpha vary", "Beta vary", "Both vary"), breaks=c(1,2,3,4))+
+  theme_bw()
+
+ggsave(here("outputs", "simData", "runTESA", "confusion-matrix-rho=0.jpeg"),height=3.5,width=8)
+
+```
+
+How about another confusion matrix for a subset of scenarios with rho = 0.4? 
+ 
+```{r}
+conf_scenNames<-c("stationary_ar","incLinearProd_ar","incLinearCap_ar","incLinearProdCap_ar")
+
+confusionOut <-dlm_out_all_combo %>%
+  filter(scen==conf_scenNames)%>%
+  group_by(scen,iteration,estModel)%>%
+  filter(row_number()==1)
+
+confusion<-matrix(0,400,6)
+confusion<-as.data.frame(confusion)
+confusion[,1]<-rep(unique(confusionOut$scen),each=100)
+confusion[,2]<-rep(1:100,times=4)
+colnames(confusion)<-c("scenario","MC","stationary","alpha","beta","alphabeta")
+colnames(confusion)<-c("scenario","MC","stationary","alpha","beta","alphabeta")
+confusionAIC <- confusion
+confusionBIC <- confusion
+
+  for(j in 1:4){
+    for(i in unique(confusionOut$iteration)){
+      AIC <- confusionOut[which(confusionOut$scen==conf_scenNames[j] & confusionOut$iteration==i),14]
+      best_mod_AICc <- which.min(unlist(AIC))[1]
+      BIC <- confusionOut[which(confusionOut$scen==conf_scenNames[j] & confusionOut$iteration==i),15]
+      best_mod_BIC <- which.min(unlist(BIC))
+      confusionAIC[which(confusionAIC$scen==conf_scenNames[j]& confusionAIC$MC==i),2+best_mod_AICc]<-1
+      confusionBIC[which(confusionBIC$scen==conf_scenNames[j] & confusionBIC$MC==i),2+best_mod_BIC]<-1
+    }
+  }
+
+confusionAIC$InfC <- rep("AIC",dim(confusionAIC)[1])
+confusionBIC$InfC <- rep("BIC",dim(confusionBIC)[1])
+confusion <- rbind(confusionAIC, confusionBIC)
+confusion$InfC <- as.factor(confusion$InfC)
+
+
+```
+
+Then we can plot:
+
+```{r}
+confusionLong <- confusion %>%
+  group_by(InfC,scenario) %>%
+  dplyr::summarize(
+    pStation=sum(stationary)/100,
+    pAlpha=sum(alpha)/100,
+    pBeta=sum(beta)/100,
+    pAlphaBeta=sum(alphabeta)/100) %>%
+  pivot_longer(pStation:pAlphaBeta,names_to="estimated",values_to="pMC") %>%
+  mutate(trueNum=case_when(scenario=="stationary_ar"~1,
+                           scenario=="incLinearProd_ar"~2,
+                           scenario=="incLinearCap_ar"~3,
+                           scenario=="incLinearProdCap_ar"~4)) %>%
+  mutate(estNum=case_when(estimated=="pStation"~1,
+                          estimated=="pAlpha"~2,
+                          estimated=="pBeta"~3,
+                          estimated=="pAlphaBeta"~4))
+
+ggplot(data=confusionLong,aes(x=trueNum, y=estNum, fill=pMC))+
+  geom_tile(aes(fill = pMC))+
+  scale_fill_viridis_c(limits=c(0,1), name="Proportion\n of trials")+
+  facet_wrap(~InfC)+
+  xlab("True") +
+  ylab("Estimated") +
+  geom_text(aes(label = round(pMC, 2)), size = 3, color="white")+
+  scale_x_continuous(labels=c("Stationary", "Alpha vary", "Beta vary", "Both vary"), breaks=c(1,2,3,4))+
+  scale_y_continuous(labels=c("Stationary", "Alpha vary", "Beta vary", "Both vary"), breaks=c(1,2,3,4))+
+  theme_bw()
+
+ggsave(here("outputs", "simData", "runTESA", "confusion-matrix-rho=0.4.jpeg"),height=3.5,width=8)
+
+```
